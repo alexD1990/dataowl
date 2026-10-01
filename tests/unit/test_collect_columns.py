@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
+import pytest
 from conftest import FakeRunner
 from pyspark.sql.types import (
     ArrayType,
@@ -272,3 +273,27 @@ def test_query_uses_lowercase_params_and_order(fake_runner: FakeRunner) -> None:
     assert "*" not in sql
     assert "sales" not in sql.lower()
     assert "orders" not in sql.lower()
+
+
+@pytest.mark.parametrize(
+    ("row", "detail"),
+    [
+        ({k: v for k, v in _row("a", 1, "string").items() if k != "column_name"}, "missing"),
+        (_row("a", "1", "string"), "ordinal_position has type str"),  # type: ignore[arg-type]
+        (_row("a", 1, "string", is_nullable="MAYBE"), "is_nullable has value"),
+    ],
+)
+def test_unexpected_row_format_is_unavailable(
+    fake_runner: FakeRunner, row: dict[str, Any], detail: str
+) -> None:
+    fake_runner.on(COLUMNS_SQL, [row])
+    fake_runner.on_schema(FLAT)
+
+    info = collect_columns(fake_runner, REF)
+
+    assert not info.columns.available
+    assert not info.num_columns.available
+    assert info.columns.reason is not None
+    assert info.columns.reason.startswith("Unexpected row format in information_schema.columns")
+    assert detail in info.columns.reason
+    assert info.num_fields_nested == Fact(3, source="metadata")

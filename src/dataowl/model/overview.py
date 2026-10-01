@@ -51,7 +51,12 @@ class DetailInfo:
 
 @dataclass(frozen=True)
 class ColumnInfo:
-    """One top-level column from information_schema.columns."""
+    """One top-level column from information_schema.columns.
+
+    position is ordinal_position as returned by information_schema.columns. The Databricks
+    documentation describes it as "The position (numbered from 1) of the column within
+    the relation."
+    """
 
     name: str
     position: int

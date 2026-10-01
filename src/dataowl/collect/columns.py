@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, TypeVar
 
 from dataowl.collect import safe_query, short_reason
 from dataowl.identifiers import TableRef
@@ -12,6 +12,8 @@ from dataowl.runner import SqlRunner
 
 if TYPE_CHECKING:
     from pyspark.sql.types import DataType, StructType
+
+T = TypeVar("T")
 
 NO_COLUMNS = "information_schema.columns returned no rows"
 
@@ -82,19 +84,47 @@ def _top_level_columns(
     if not result:
         return Fact.unavailable("metadata", NO_COLUMNS), Fact.unavailable("metadata", NO_COLUMNS)
 
-    columns = tuple(_column(row) for row in result)
+    try:
+        columns = tuple(_column(row) for row in result)
+    except ValueError as exc:
+        reason = f"Unexpected row format in information_schema.columns: {exc}"
+        return Fact.unavailable("metadata", reason), Fact.unavailable("metadata", reason)
     return Fact(columns, source="metadata"), Fact(len(columns), source="metadata")
 
 
 def _column(row: dict[str, Any]) -> ColumnInfo:
+    """Convert one row. Raises ValueError if a key is missing or has an unexpected type."""
+    name = _get(row, "column_name", str)
+    position = _get(row, "ordinal_position", int)
     full_data_type = row.get("full_data_type")
+    if full_data_type is None:
+        data_type = _get(row, "data_type", str)
+    elif isinstance(full_data_type, str):
+        data_type = full_data_type
+    else:
+        raise ValueError(f"full_data_type has type {type(full_data_type).__name__}")
+    is_nullable = _get(row, "is_nullable", str)
+    if is_nullable not in ("YES", "NO"):
+        raise ValueError(f"is_nullable has value {is_nullable!r}")
+    comment = row.get("comment")
+    if comment is not None and not isinstance(comment, str):
+        raise ValueError(f"comment has type {type(comment).__name__}")
     return ColumnInfo(
-        name=row["column_name"],
-        position=row["ordinal_position"],
-        data_type=full_data_type if full_data_type is not None else row["data_type"],
-        nullable=row["is_nullable"] == "YES",
-        comment=row.get("comment"),
+        name=name,
+        position=position,
+        data_type=data_type,
+        nullable=is_nullable == "YES",
+        comment=comment,
     )
+
+
+def _get(row: dict[str, Any], key: str, expected: type[T]) -> T:
+    if key not in row:
+        raise ValueError(f"missing {key}")
+    value = row[key]
+    if not isinstance(value, expected) or isinstance(value, bool):
+        raise ValueError(f"{key} has type {type(value).__name__}")
+    return value
 
 
 def _nested_field_count(runner: SqlRunner, ref: TableRef) -> Fact[int]:
