@@ -4,13 +4,11 @@ from __future__ import annotations
 
 from typing import Any
 
-from dataowl.collect import safe_query, short_reason
+from dataowl.collect import NOT_FOR_VIEWS, is_view, safe_query, short_reason
 from dataowl.identifiers import TableRef
 from dataowl.model.facts import Fact
 from dataowl.model.overview import ObjectType, PropertiesInfo
 from dataowl.runner import SqlRunner
-
-NOT_FOR_VIEWS = "Not available for views"
 
 _CHANGE_DATA_FEED = "delta.enablechangedatafeed"
 _LOG_RETENTION = "delta.logretentionduration"
@@ -26,42 +24,47 @@ def collect_properties(
     It also runs when the object type is UNKNOWN or unavailable. Keys are matched case
     insensitively. A property that is not set gives Fact(None, source="metadata").
     """
-    if object_type.available and object_type.value is ObjectType.VIEW:
+    if is_view(object_type):
         return _unavailable(NOT_FOR_VIEWS)
 
     result = safe_query(runner, f"SHOW TBLPROPERTIES {ref.quoted()}")
     if isinstance(result, Exception):
         return _unavailable(short_reason(result))
 
-    try:
-        values = _relevant_values(result)
-    except ValueError as exc:
-        return _unavailable(f"Unexpected row format in SHOW TBLPROPERTIES: {exc}")
-
+    facts = _property_facts(result)
     return PropertiesInfo(
-        change_data_feed=Fact(values.get(_CHANGE_DATA_FEED), source="metadata"),
-        log_retention=Fact(values.get(_LOG_RETENTION), source="metadata"),
-        deleted_file_retention=Fact(values.get(_DELETED_FILE_RETENTION), source="metadata"),
+        change_data_feed=facts[_CHANGE_DATA_FEED],
+        log_retention=facts[_LOG_RETENTION],
+        deleted_file_retention=facts[_DELETED_FILE_RETENTION],
     )
 
 
-def _relevant_values(rows: list[dict[str, Any]]) -> dict[str, str]:
-    """Return the relevant properties keyed by lower-case key. Other rows are discarded.
+def _property_facts(rows: list[dict[str, Any]]) -> dict[str, Fact[str]]:
+    """Return one fact per relevant property, keyed by lower-case key.
 
-    Raises ValueError if a row has no string key or value.
+    Rows whose key is not a string, and rows for other properties, are skipped. A relevant
+    row whose value is not a string makes only that property unavailable.
     """
-    values: dict[str, str] = {}
+    facts: dict[str, Fact[str]] = {key: Fact(None, source="metadata") for key in _KEYS}
+    seen: set[str] = set()
     for row in rows:
         key = row.get("key")
-        value = row.get("value")
         if not isinstance(key, str):
-            raise ValueError(f"key has type {type(key).__name__}")
-        if not isinstance(value, str):
-            raise ValueError(f"value has type {type(value).__name__}")
+            continue
         normalized = key.lower()
-        if normalized in _KEYS:
-            values.setdefault(normalized, value)
-    return values
+        if normalized not in _KEYS or normalized in seen:
+            continue
+        seen.add(normalized)
+        value = row.get("value")
+        if isinstance(value, str):
+            facts[normalized] = Fact(value, source="metadata")
+        else:
+            facts[normalized] = Fact.unavailable(
+                "metadata",
+                f"Unexpected row format in SHOW TBLPROPERTIES: value of {key} has type "
+                f"{type(value).__name__}",
+            )
+    return facts
 
 
 def _unavailable(reason: str) -> PropertiesInfo:

@@ -5,8 +5,10 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
+from typing import Any
 
-from dataowl.model.facts import Fact
+from dataowl.identifiers import TableRef
+from dataowl.model.facts import Fact, to_jsonable
 
 
 class ObjectType(Enum):
@@ -86,3 +88,43 @@ class ColumnsInfo:
     columns: Fact[tuple[ColumnInfo, ...]]
     num_columns: Fact[int]
     num_fields_nested: Fact[int]
+
+
+@dataclass(frozen=True)
+class Overview:
+    """All facts from inspect().
+
+    format and created come from information_schema; last_modified is the last data change
+    from DESCRIBE DETAIL. object_type_raw is the original table_type, also when object_type
+    is UNKNOWN.
+    """
+
+    table: TableRef
+    object_type: Fact[ObjectType]
+    object_type_raw: Fact[str]
+    format: Fact[str]
+    owner: Fact[str]
+    comment: Fact[str]
+    created: Fact[datetime]
+    last_modified: Fact[datetime]
+    size_bytes: Fact[int]
+    num_files: Fact[int]
+    avg_file_size_bytes: Fact[float]
+    num_rows: Fact[int]
+    num_columns: Fact[int]
+    num_fields_nested: Fact[int]
+    partition_columns: Fact[tuple[str, ...]]
+    clustering_columns: Fact[tuple[str, ...]]
+    change_data_feed: Fact[str]
+    log_retention: Fact[str]
+    deleted_file_retention: Fact[str]
+    columns: Fact[tuple[ColumnInfo, ...]]
+
+    def to_dict(self) -> dict[str, Any]:
+        result: dict[str, Any] = to_jsonable(self)
+        return result
+
+    def show(self) -> None:
+        from dataowl.render.terminal import render_overview
+
+        print(render_overview(self))

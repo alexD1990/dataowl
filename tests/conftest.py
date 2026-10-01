@@ -60,3 +60,37 @@ class FakeRunner:
 @pytest.fixture
 def fake_runner() -> FakeRunner:
     return FakeRunner()
+
+
+_READ_ONLY_START = re.compile(r"(SELECT|WITH|DESCRIBE|SHOW)\b", re.IGNORECASE)
+_FORBIDDEN = re.compile(
+    r"\b(INSERT|UPDATE|DELETE|MERGE|CREATE|ALTER|DROP|OPTIMIZE|VACUUM)\b|\bANALYZE\s+TABLE\b",
+    re.IGNORECASE,
+)
+
+
+def _strip_leading_comments(sql: str) -> str:
+    while True:
+        sql = sql.lstrip()
+        if sql.startswith("--"):
+            newline = sql.find("\n")
+            sql = "" if newline == -1 else sql[newline + 1 :]
+        elif sql.startswith("/*"):
+            end = sql.find("*/")
+            sql = "" if end == -1 else sql[end + 2 :]
+        else:
+            return sql
+
+
+def assert_read_only(fake: FakeRunner) -> None:
+    """Assert that every executed query is read-only (principle 2).
+
+    Each query must start with SELECT, WITH, DESCRIBE or SHOW after leading whitespace and
+    comments, and must not contain a forbidden keyword as a whole word.
+    """
+    for sql, _ in fake.queries:
+        assert _READ_ONLY_START.match(_strip_leading_comments(sql)), (
+            f"Query does not start with a read-only keyword: {sql}"
+        )
+        match = _FORBIDDEN.search(sql)
+        assert match is None, f"Query contains forbidden keyword {match.group(0)!r}: {sql}"

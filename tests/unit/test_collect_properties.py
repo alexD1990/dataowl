@@ -130,18 +130,49 @@ def test_query_error(fake_runner: FakeRunner) -> None:
     assert _all(info) == [Fact.unavailable("metadata", reason)] * 3
 
 
-@pytest.mark.parametrize(
-    ("row", "detail"),
-    [
-        ({"value": "true"}, "key has type NoneType"),
-        ({"key": "delta.enableChangeDataFeed"}, "value has type NoneType"),
-        (_prop("delta.enableChangeDataFeed", True), "value has type bool"),
-    ],
-)
-def test_unexpected_row_format(fake_runner: FakeRunner, row: dict[str, Any], detail: str) -> None:
-    fake_runner.on(PROPS_SQL, [row])
+@pytest.mark.parametrize("row", [{"value": "true"}, {"key": None, "value": "x"}, {"key": 1}])
+def test_rows_without_string_key_are_skipped(fake_runner: FakeRunner, row: dict[str, Any]) -> None:
+    fake_runner.on(PROPS_SQL, [row, _prop("delta.enableChangeDataFeed", "true")])
 
     info = collect_properties(fake_runner, REF, MANAGED)
 
-    reason = f"Unexpected row format in SHOW TBLPROPERTIES: {detail}"
-    assert _all(info) == [Fact.unavailable("metadata", reason)] * 3
+    assert info.change_data_feed == Fact("true", source="metadata")
+    assert info.log_retention == NOT_SET
+    assert info.deleted_file_retention == NOT_SET
+
+
+def test_irrelevant_row_with_bad_value_is_ignored(fake_runner: FakeRunner) -> None:
+    fake_runner.on(
+        PROPS_SQL,
+        [
+            _prop("delta.minReaderVersion", 1),
+            _prop("delta.logRetentionDuration", "interval 30 days"),
+        ],
+    )
+
+    info = collect_properties(fake_runner, REF, MANAGED)
+
+    assert info.log_retention == Fact("interval 30 days", source="metadata")
+
+
+@pytest.mark.parametrize(("value", "type_name"), [(None, "NoneType"), (True, "bool")])
+def test_bad_value_makes_only_that_property_unavailable(
+    fake_runner: FakeRunner, value: Any, type_name: str
+) -> None:
+    fake_runner.on(
+        PROPS_SQL,
+        [
+            _prop("delta.enableChangeDataFeed", value),
+            _prop("delta.logRetentionDuration", "interval 30 days"),
+        ],
+    )
+
+    info = collect_properties(fake_runner, REF, MANAGED)
+
+    assert info.change_data_feed == Fact.unavailable(
+        "metadata",
+        "Unexpected row format in SHOW TBLPROPERTIES: value of delta.enableChangeDataFeed "
+        f"has type {type_name}",
+    )
+    assert info.log_retention == Fact("interval 30 days", source="metadata")
+    assert info.deleted_file_retention == NOT_SET

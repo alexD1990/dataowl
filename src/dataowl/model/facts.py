@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, fields, is_dataclass
+from datetime import date
+from enum import Enum
 from typing import Any, Generic, Literal, TypeVar
 
 T = TypeVar("T")
@@ -46,3 +48,28 @@ def derive(fn: Callable[..., R], *facts: Fact[Any]) -> Fact[R]:
             assert fact.reason is not None  # guaranteed by Fact.__post_init__
             return Fact.unavailable("derived", fact.reason)
     return Fact(fn(*(fact.value for fact in facts)), source="derived")
+
+
+def to_jsonable(obj: Any) -> Any:
+    """Convert facts and model objects to JSON-serializable types.
+
+    Fact becomes {"value", "source", "available", "reason"}. Other dataclasses become a
+    dict of their fields. Tuples and lists become lists, enums their value, and datetime
+    and date ISO 8601 strings. Other values are returned unchanged.
+    """
+    if isinstance(obj, Fact):
+        return {
+            "value": to_jsonable(obj.value),
+            "source": obj.source,
+            "available": obj.available,
+            "reason": obj.reason,
+        }
+    if is_dataclass(obj) and not isinstance(obj, type):
+        return {field.name: to_jsonable(getattr(obj, field.name)) for field in fields(obj)}
+    if isinstance(obj, (tuple, list)):
+        return [to_jsonable(item) for item in obj]
+    if isinstance(obj, Enum):
+        return obj.value
+    if isinstance(obj, date):
+        return obj.isoformat()
+    return obj

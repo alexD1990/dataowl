@@ -4,13 +4,12 @@ from __future__ import annotations
 
 from typing import Any
 
-from dataowl.collect import safe_query, short_reason
+from dataowl.collect import NOT_FOR_VIEWS, is_view, safe_query, short_reason
 from dataowl.identifiers import TableRef
 from dataowl.model.facts import Fact, derive
 from dataowl.model.overview import DetailInfo, ObjectType
 from dataowl.runner import SqlRunner
 
-NOT_FOR_VIEWS = "Not available for views"
 NOT_PRESENT = "Not present in DESCRIBE DETAIL output"
 NO_ROWS = "DESCRIBE DETAIL returned no rows"
 
@@ -21,7 +20,7 @@ def collect_detail(runner: SqlRunner, ref: TableRef, object_type: Fact[ObjectTyp
     It also runs when the object type is UNKNOWN or unavailable. Errors make every fact
     unavailable.
     """
-    if object_type.available and object_type.value is ObjectType.VIEW:
+    if is_view(object_type):
         return _unavailable(NOT_FOR_VIEWS)
 
     result = safe_query(runner, f"DESCRIBE DETAIL {ref.quoted()}")

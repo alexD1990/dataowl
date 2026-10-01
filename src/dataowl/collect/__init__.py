@@ -4,9 +4,18 @@ from __future__ import annotations
 
 from typing import Any
 
+from dataowl.model.facts import Fact
+from dataowl.model.overview import ObjectType
 from dataowl.runner import SqlRunner
 
 _MAX_REASON_LENGTH = 200
+
+NOT_FOR_VIEWS = "Not available for views"
+
+
+def is_view(object_type: Fact[ObjectType]) -> bool:
+    """True only when the object type is known to be VIEW."""
+    return object_type.available and object_type.value is ObjectType.VIEW
 
 
 def safe_query(
