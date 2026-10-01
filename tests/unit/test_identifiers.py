@@ -101,6 +101,10 @@ def test_quoted_escapes_backticks() -> None:
     assert TableRef("c", "s", "we`ird").quoted() == "`c`.`s`.`we``ird`"
 
 
+def test_quoted_catalog() -> None:
+    assert TableRef("my`cat", "s", "t").quoted_catalog() == "`my``cat`"
+
+
 def test_quoted_keeps_injection_inside_identifier() -> None:
     ref = TableRef("c", "s", "x`; DROP TABLE y; --")
     assert ref.quoted() == "`c`.`s`.`x``; DROP TABLE y; --`"

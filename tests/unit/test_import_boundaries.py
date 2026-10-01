@@ -18,7 +18,9 @@ for info in pkgutil.walk_packages(getattr(module, "__path__", []), module.__name
 """
 
 
-@pytest.mark.parametrize("name", ["dataowl.model", "dataowl.render", "dataowl.runner"])
+@pytest.mark.parametrize(
+    "name", ["dataowl", "dataowl.collect", "dataowl.model", "dataowl.render", "dataowl.runner"]
+)
 def test_importable_without_pyspark(name: str) -> None:
     result = subprocess.run(
         [sys.executable, "-c", _SCRIPT.format(name=name)],

@@ -23,6 +23,9 @@ class TableRef:
     def quoted(self) -> str:
         return ".".join(_quote(part) for part in (self.catalog, self.schema, self.table))
 
+    def quoted_catalog(self) -> str:
+        return _quote(self.catalog)
+
 
 def parse_table(name: str) -> TableRef:
     """Parse `catalog.schema.table`. Parts may be quoted with backticks."""

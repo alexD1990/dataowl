@@ -1,0 +1,20 @@
+[
+  {
+    "format": "delta",
+    "id": "00000000-0000-0000-0000-000000000000",
+    "name": "main.sales.orders",
+    "description": null,
+    "location": "s3://bucket/path",
+    "createdAt": "2024-03-12T08:14:00",
+    "lastModified": "2026-09-30T03:12:00",
+    "partitionColumns": ["year"],
+    "clusteringColumns": [],
+    "numFiles": 12,
+    "sizeInBytes": 88290099,
+    "properties": {"delta.enableChangeDataFeed": "true"},
+    "minReaderVersion": 1,
+    "minWriterVersion": 7,
+    "tableFeatures": ["changeDataFeed"],
+    "statistics": {}
+  }
+]
