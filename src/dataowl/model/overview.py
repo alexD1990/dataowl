@@ -69,9 +69,9 @@ class PropertiesInfo:
 class ColumnInfo:
     """One top-level column from information_schema.columns.
 
-    position is ordinal_position as returned by information_schema.columns. The Databricks
-    documentation describes it as "The position (numbered from 1) of the column within
-    the relation."
+    position is the raw ordinal_position from information_schema.columns. The Databricks
+    documentation says it is numbered from 1, but it has been observed to be 0-based in
+    Databricks (serverless, October 2026). Do not use it as a display number.
     """
 
     name: str

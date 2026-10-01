@@ -48,12 +48,12 @@ def table_overview() -> Overview:
         deleted_file_retention=Fact(None, source="metadata"),
         columns=Fact(
             (
-                ColumnInfo("skattyter_id", 1, "STRING", False, None),
-                ColumnInfo("inntektsaar", 2, "INT", False, ""),
-                ColumnInfo("belop", 3, "DECIMAL(18,2)", True, "Beløp i NOK"),
+                ColumnInfo("skattyter_id", 0, "STRING", False, None),
+                ColumnInfo("inntektsaar", 1, "INT", False, ""),
+                ColumnInfo("belop", 2, "DECIMAL(18,2)", True, "Beløp i NOK"),
                 ColumnInfo(
                     "adresse",
-                    4,
+                    3,
                     "STRUCT<gate: STRING, postnr: STRING>",
                     True,
                     "Folkeregistrert adresse ved utgangen av\ninntektsåret, slik den er registrert",
@@ -185,3 +185,17 @@ def test_header_shows_only_na_for_unavailable_facts() -> None:
     header = render_overview(unavailable_overview()).splitlines()[0]
 
     assert header == "`my-catalog`.raw.events   (n/a, n/a)"
+
+
+@pytest.mark.parametrize("first_position", [0, 1])
+def test_schema_number_is_running_number(first_position: int) -> None:
+    columns = tuple(
+        ColumnInfo(name, first_position + i, "STRING", True, None)
+        for i, name in enumerate(["a", "b", "c"])
+    )
+    overview = dataclasses.replace(view_overview(), columns=Fact(columns, source="metadata"))
+    lines = render_overview(overview).splitlines()
+    rows = lines[lines.index("SCHEMA") + 2 :]
+
+    assert [row.split()[0] for row in rows] == ["1", "2", "3"]
+    assert [row.split()[1] for row in rows] == ["a", "b", "c"]

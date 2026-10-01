@@ -130,13 +130,18 @@ def test_small_table(recorder: RecordingRunner) -> None:
     assert overview.partition_columns == Fact((), source="metadata")
 
 
-def test_ordinal_position_starts_at_1(recorder: RecordingRunner) -> None:
+def test_ordinal_position_observed_base(recorder: RecordingRunner) -> None:
+    # Documents observed behaviour that differs from the Databricks documentation: the
+    # documentation says ordinal_position is numbered from 1, but Databricks (serverless,
+    # October 2026) returns 0-based positions. ColumnInfo.position keeps the raw value.
     overview = inspect(table("small_table"))
 
     assert overview.columns.value is not None
     first = overview.columns.value[0]
     assert first.name == "id"
-    assert first.position == 1
+    assert first.position == 0
+    positions = [column.position for column in overview.columns.value]
+    assert positions == list(range(positions[0], positions[0] + len(positions)))
 
 
 def test_created_and_last_modified_are_datetime(recorder: RecordingRunner) -> None:

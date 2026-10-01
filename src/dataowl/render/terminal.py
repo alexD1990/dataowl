@@ -101,13 +101,13 @@ def _schema(columns: Fact[tuple[ColumnInfo, ...]]) -> list[str]:
     table = [("#", "name", "type", "nullable", "comment")]
     table += [
         (
-            str(column.position),
+            str(number),
             column.name,
             column.data_type,
             "yes" if column.nullable else "no",
             _shorten(column.comment or "", _COLUMN_COMMENT_WIDTH),
         )
-        for column in columns.value
+        for number, column in enumerate(columns.value, start=1)
     ]
     widths = [max(len(row[i]) for row in table) for i in range(4)]
     return [

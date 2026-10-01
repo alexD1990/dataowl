@@ -57,7 +57,8 @@ CREATE SCHEMA IF NOT EXISTS IDENTIFIER(it_prefix);
 --   num_rows        1000
 --   num_columns     4
 --   num_fields_nested 4
---   first column    id, position 1 (ordinal_position is documented as numbered from 1)
+--   first column    id, position 0 (ordinal_position is documented as numbered from 1,
+--                   but observed 0-based in Databricks serverless, October 2026)
 --   size_bytes, num_files  available and > 0
 --   partition_columns      empty
 
