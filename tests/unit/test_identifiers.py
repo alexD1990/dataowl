@@ -105,6 +105,19 @@ def test_quoted_catalog() -> None:
     assert TableRef("my`cat", "s", "t").quoted_catalog() == "`my``cat`"
 
 
+@pytest.mark.parametrize(
+    ("ref", "expected"),
+    [
+        (TableRef("main", "Sales", "orders_2024"), "main.Sales.orders_2024"),
+        (TableRef("my-catalog", "s", "t"), "`my-catalog`.s.t"),
+        (TableRef("c", "a.b", "we`ird"), "c.`a.b`.`we``ird`"),
+        (TableRef("c", "s", "tø"), "c.s.`tø`"),
+    ],
+)
+def test_display_name(ref: TableRef, expected: str) -> None:
+    assert ref.display_name() == expected
+
+
 def test_quoted_keeps_injection_inside_identifier() -> None:
     ref = TableRef("c", "s", "x`; DROP TABLE y; --")
     assert ref.quoted() == "`c`.`s`.`x``; DROP TABLE y; --`"

@@ -1,0 +1,19 @@
+main.skatt.inntekt_v   (VIEW, –)
+
+Size:                    n/a (Not available for views)
+Files:                   n/a (Not available for views)
+Rows:                    n/a (Skipped for VIEW; use count_views=True)
+Columns:                 2  (2 incl. nested)
+Partitioned by:          n/a (Not available for views)
+Clustered by:            n/a (Not available for views)
+Change Data Feed:        n/a (Not available for views)
+Log retention:           n/a (Not available for views)
+Deleted file retention:  n/a (Not available for views)
+Created:                 2025-01-02 09:00
+Last modified:           n/a (Not available for views)
+Owner:                   team-x
+
+SCHEMA
+  #  name          type    nullable  comment
+  1  skattyter_id  STRING  yes
+  2  inntektsaar   INT     yes

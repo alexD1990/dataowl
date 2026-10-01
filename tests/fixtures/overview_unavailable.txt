@@ -1,0 +1,17 @@
+`my-catalog`.raw.events   (n/a ([INSUFFICIENT_PERMISSIONS] User does not have USE CATALOG on Catalog 'my-catalog'.), n/a ([INSUFFICIENT_PERMISSIONS] User does not have USE CATALOG on Catalog 'my-catalog'.))
+
+Size:                    n/a ([DELTA_TABLE_ONLY_OPERATION] `my-catalog`.`raw`.`events` is not a Delta table.)
+Files:                   0  (avg: n/a (No files))
+Rows:                    n/a (Skipped: object type unknown; use count_views=True)
+Columns:                 n/a ([INSUFFICIENT_PERMISSIONS] User does not have USE CATALOG on Catalog 'my-catalog'.)  (3 incl. nested)
+Partitioned by:          n/a ([DELTA_TABLE_ONLY_OPERATION] `my-catalog`.`raw`.`events` is not a Delta table.)
+Clustered by:            n/a (Not present in DESCRIBE DETAIL output)
+Change Data Feed:        true
+Log retention:           n/a (Unexpected row format in SHOW TBLPROPERTIES: value of delta.logRetentionDuration has type NoneType)
+Deleted file retention:  not set (default)
+Created:                 n/a ([INSUFFICIENT_PERMISSIONS] User does not have USE CATALOG on Catalog 'my-catalog'.)
+Last modified:           n/a ([DELTA_TABLE_ONLY_OPERATION] `my-catalog`.`raw`.`events` is not a Delta table.)
+Owner:                   n/a ([INSUFFICIENT_PERMISSIONS] User does not have USE CATALOG on Catalog 'my-catalog'.)
+
+SCHEMA
+  n/a ([INSUFFICIENT_PERMISSIONS] User does not have USE CATALOG on Catalog 'my-catalog'.)

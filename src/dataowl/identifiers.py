@@ -26,6 +26,13 @@ class TableRef:
     def quoted_catalog(self) -> str:
         return _quote(self.catalog)
 
+    def display_name(self) -> str:
+        """Name for display: parts with only letters, digits and underscore are unquoted."""
+        return ".".join(
+            part if all(char in _UNQUOTED_CHARS for char in part) else _quote(part)
+            for part in (self.catalog, self.schema, self.table)
+        )
+
 
 def parse_table(name: str) -> TableRef:
     """Parse `catalog.schema.table`. Parts may be quoted with backticks."""

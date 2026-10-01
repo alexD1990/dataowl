@@ -1,0 +1,21 @@
+main.skatt.inntekt   (MANAGED, DELTA)
+
+Size:                    84.2 MB
+Files:                   12  (avg 7.0 MB)
+Rows:                    1 284 991
+Columns:                 4  (6 incl. nested)
+Partitioned by:          inntektsaar
+Clustered by:            –
+Change Data Feed:        not set (default)
+Log retention:           interval 60 days
+Deleted file retention:  not set (default)
+Created:                 2024-03-12 08:14
+Last modified:           2026-09-30 03:12
+Owner:                   team-x
+
+SCHEMA
+  #  name          type                                  nullable  comment
+  1  skattyter_id  STRING                                no
+  2  inntektsaar   INT                                   no
+  3  belop         DECIMAL(18,2)                         yes       Beløp i NOK
+  4  adresse       STRUCT<gate: STRING, postnr: STRING>  yes       Folkeregistrert adresse ved utgangen av…

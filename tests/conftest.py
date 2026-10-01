@@ -63,6 +63,7 @@ def fake_runner() -> FakeRunner:
 
 
 _READ_ONLY_START = re.compile(r"(SELECT|WITH|DESCRIBE|SHOW)\b", re.IGNORECASE)
+_QUOTED_IDENTIFIER = re.compile(r"`(?:[^`]|``)*`")
 _FORBIDDEN = re.compile(
     r"\b(INSERT|UPDATE|DELETE|MERGE|CREATE|ALTER|DROP|OPTIMIZE|VACUUM)\b|\bANALYZE\s+TABLE\b",
     re.IGNORECASE,
@@ -86,11 +87,21 @@ def assert_read_only(fake: FakeRunner) -> None:
     """Assert that every executed query is read-only (principle 2).
 
     Each query must start with SELECT, WITH, DESCRIBE or SHOW after leading whitespace and
-    comments, and must not contain a forbidden keyword as a whole word.
+    comments, and must not contain a forbidden keyword as a whole word. Backtick-quoted
+    identifiers are removed before the keyword search, so a table named `update` passes.
     """
     for sql, _ in fake.queries:
         assert _READ_ONLY_START.match(_strip_leading_comments(sql)), (
             f"Query does not start with a read-only keyword: {sql}"
         )
-        match = _FORBIDDEN.search(sql)
+        match = _FORBIDDEN.search(_QUOTED_IDENTIFIER.sub(" ", sql))
         assert match is None, f"Query contains forbidden keyword {match.group(0)!r}: {sql}"
+
+
+_JUDGEMENT = re.compile(r"\b(recommend|should|safe|suitable)\b|[✓⚠✗]", re.IGNORECASE)
+
+
+def assert_no_judgement(text: str) -> None:
+    """Assert that text contains no judgemental words or symbols (principle 1)."""
+    match = _JUDGEMENT.search(text)
+    assert match is None, f"Output contains judgemental term {match.group(0)!r}"

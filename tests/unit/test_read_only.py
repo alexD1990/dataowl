@@ -24,6 +24,9 @@ def _runner_with(*queries: str) -> FakeRunner:
         "-- leading comment\nSELECT 1",
         "/* block\ncomment */ SELECT deleted_file_retention, updated_at FROM t",
         "SELECT * FROM t WHERE x = 'analyze'",
+        "SELECT COUNT(*) AS n FROM `main`.`update`.`drop`",
+        "DESCRIBE DETAIL `c`.`s`.`we``delete``ird`",
+        "SHOW TBLPROPERTIES `analyze table`.s.t",
     ],
 )
 def test_accepts_read_only_sql(sql: str) -> None:
@@ -49,6 +52,8 @@ def test_accepts_read_only_sql(sql: str) -> None:
         "-- SELECT\nDELETE FROM t",
         "/* SELECT */ VACUUM t",
         "EXPLAIN SELECT 1",
+        "SELECT 1 FROM `c`.`s`.`t`; DROP TABLE x",
+        "SELECT 1 FROM `a``b`DELETE",
     ],
 )
 def test_rejects_writing_sql(sql: str) -> None:
