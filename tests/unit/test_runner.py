@@ -5,6 +5,7 @@ from typing import Any
 import pytest
 from pyspark.sql import SparkSession
 
+from dataowl.identifiers import TableRef
 from dataowl.runner import SparkRunner, get_runner
 
 
@@ -26,10 +27,21 @@ class StubDataFrame:
         return self._rows
 
 
+class StubTable:
+    def __init__(self, schema: object) -> None:
+        self.schema = schema
+
+
 class StubSession:
-    def __init__(self, rows: list[StubRow]) -> None:
+    def __init__(self, rows: list[StubRow], schema: object = None) -> None:
         self.rows = rows
         self.calls: list[tuple[str, dict[str, Any] | None]] = []
+        self.schema = schema
+        self.tables: list[str] = []
+
+    def table(self, name: str) -> StubTable:
+        self.tables.append(name)
+        return StubTable(self.schema)
 
     def sql(self, sql: str, args: dict[str, Any] | None = None) -> StubDataFrame:
         self.calls.append((sql, args))
@@ -52,6 +64,17 @@ def test_spark_runner_query_without_params() -> None:
 
     assert SparkRunner(session).query("SELECT 1") == []  # type: ignore[arg-type]
     assert session.calls == [("SELECT 1", None)]
+
+
+def test_spark_runner_schema_uses_quoted_name() -> None:
+    schema = object()
+    session = StubSession([], schema)
+
+    result = SparkRunner(session).schema(TableRef("c", "s", "we`ird"))  # type: ignore[arg-type]
+
+    assert result is schema
+    assert session.tables == ["`c`.`s`.`we``ird`"]
+    assert session.calls == []
 
 
 def test_get_runner_uses_given_session(monkeypatch: pytest.MonkeyPatch) -> None:

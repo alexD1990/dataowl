@@ -7,12 +7,17 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Protocol
 
+from dataowl.identifiers import TableRef
+
 if TYPE_CHECKING:
     from pyspark.sql import SparkSession
+    from pyspark.sql.types import StructType
 
 
 class SqlRunner(Protocol):
     def query(self, sql: str, params: dict[str, Any] | None = None) -> list[dict[str, Any]]: ...
+
+    def schema(self, table: TableRef) -> StructType: ...
 
 
 class SparkRunner:
@@ -22,6 +27,10 @@ class SparkRunner:
     def query(self, sql: str, params: dict[str, Any] | None = None) -> list[dict[str, Any]]:
         rows = self._spark.sql(sql, args=params).collect()
         return [row.asDict(recursive=True) for row in rows]
+
+    def schema(self, table: TableRef) -> StructType:
+        # spark.table() is lazy; reading .schema does not scan data.
+        return self._spark.table(table.quoted()).schema
 
 
 def get_runner(spark: SparkSession | None = None) -> SparkRunner:

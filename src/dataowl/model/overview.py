@@ -47,3 +47,23 @@ class DetailInfo:
     last_modified: Fact[datetime]
     partition_columns: Fact[tuple[str, ...]]
     clustering_columns: Fact[tuple[str, ...]]
+
+
+@dataclass(frozen=True)
+class ColumnInfo:
+    """One top-level column from information_schema.columns."""
+
+    name: str
+    position: int
+    data_type: str
+    nullable: bool
+    comment: str | None
+
+
+@dataclass(frozen=True)
+class ColumnsInfo:
+    """Schema facts: top-level columns and the field count including nested fields."""
+
+    columns: Fact[tuple[ColumnInfo, ...]]
+    num_columns: Fact[int]
+    num_fields_nested: Fact[int]

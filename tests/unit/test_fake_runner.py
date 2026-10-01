@@ -2,6 +2,11 @@ from __future__ import annotations
 
 import pytest
 from conftest import FakeRunner
+from pyspark.sql.types import StringType, StructField, StructType
+
+from dataowl.identifiers import TableRef
+
+REF = TableRef("c", "s", "t")
 
 
 def test_returns_registered_rows(fake_runner: FakeRunner) -> None:
@@ -53,3 +58,24 @@ def test_records_query_that_raises(fake_runner: FakeRunner) -> None:
         fake_runner.query("SELECT 1")
 
     assert fake_runner.queries == [("SELECT 1", None)]
+
+
+def test_schema_returns_registered_struct(fake_runner: FakeRunner) -> None:
+    struct = StructType([StructField("a", StringType())])
+    fake_runner.on_schema(struct)
+
+    assert fake_runner.schema(REF) is struct
+    assert fake_runner.schema_calls == [REF]
+
+
+def test_schema_raises_registered_error(fake_runner: FakeRunner) -> None:
+    fake_runner.on_schema_error(PermissionError("denied"))
+
+    with pytest.raises(PermissionError, match="denied"):
+        fake_runner.schema(REF)
+    assert fake_runner.schema_calls == [REF]
+
+
+def test_schema_without_registration_raises_assertion_error(fake_runner: FakeRunner) -> None:
+    with pytest.raises(AssertionError, match="no schema registered"):
+        fake_runner.schema(REF)
