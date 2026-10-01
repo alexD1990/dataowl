@@ -50,6 +50,20 @@ class DetailInfo:
 
 
 @dataclass(frozen=True)
+class PropertiesInfo:
+    """Selected Delta table properties from SHOW TBLPROPERTIES, as raw strings.
+
+    A property that is not set is an available fact with value None, e.g.
+    Fact(None, source="metadata"). The model holds no display text for this; rendering
+    decides how to show it.
+    """
+
+    change_data_feed: Fact[str]
+    log_retention: Fact[str]
+    deleted_file_retention: Fact[str]
+
+
+@dataclass(frozen=True)
 class ColumnInfo:
     """One top-level column from information_schema.columns.
 
