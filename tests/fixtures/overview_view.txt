@@ -12,6 +12,7 @@ Deleted file retention:  n/a (Not available for views)
 Created:                 2025-01-02 09:00
 Last modified:           n/a (Not available for views)
 Owner:                   team-x
+Comment:                 –
 
 SCHEMA
   #  name          type    nullable  comment

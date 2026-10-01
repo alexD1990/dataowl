@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import dataclasses
 from datetime import datetime
 from pathlib import Path
 
@@ -27,7 +28,11 @@ def table_overview() -> Overview:
         object_type_raw=Fact("MANAGED", source="metadata"),
         format=Fact("DELTA", source="metadata"),
         owner=Fact("team-x", source="metadata"),
-        comment=Fact("Inntekt per skattyter", source="metadata"),
+        comment=Fact(
+            "Inntekt per skattyter og inntektsår.\n\nKilde: likningsgrunnlaget, levert nattlig "
+            "fra fagsystemet.",
+            source="metadata",
+        ),
         created=Fact(datetime(2024, 3, 12, 8, 14, 33), source="metadata"),
         last_modified=Fact(datetime(2026, 9, 30, 3, 12, 5), source="metadata"),
         size_bytes=Fact(88290099, source="metadata"),
@@ -157,3 +162,26 @@ def test_long_comment_is_cut_to_40_characters() -> None:
 
     assert comment.endswith("…")
     assert len(comment) == 40
+
+
+def test_table_comment_is_cut_to_80_characters() -> None:
+    lines = render_overview(table_overview()).splitlines()
+    comment = next(line for line in lines if line.startswith("Comment:")).split(":", 1)[1].strip()
+
+    assert comment.endswith("…")
+    assert len(comment) == 80
+    assert "\n" not in comment
+
+
+@pytest.mark.parametrize("comment", [None, ""])
+def test_missing_table_comment_is_dash(comment: str | None) -> None:
+    overview = dataclasses.replace(view_overview(), comment=Fact(comment, source="metadata"))
+    lines = render_overview(overview).splitlines()
+
+    assert "Comment:                 –" in lines
+
+
+def test_header_shows_only_na_for_unavailable_facts() -> None:
+    header = render_overview(unavailable_overview()).splitlines()[0]
+
+    assert header == "`my-catalog`.raw.events   (n/a, n/a)"

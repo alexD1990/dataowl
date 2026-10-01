@@ -14,13 +14,14 @@ if TYPE_CHECKING:
 T = TypeVar("T")
 
 NOT_SET = "not set (default)"
-_COMMENT_WIDTH = 40
+_COLUMN_COMMENT_WIDTH = 40
+_TABLE_COMMENT_WIDTH = 80
 
 
 def render_overview(overview: Overview) -> str:
     header = (
         f"{overview.table.display_name()}   "
-        f"({format_fact(overview.object_type_raw)}, {format_fact(overview.format)})"
+        f"({_header_value(overview.object_type_raw)}, {_header_value(overview.format)})"
     )
     rows = [
         ("Size:", format_fact(overview.size_bytes, format_bytes)),
@@ -38,6 +39,7 @@ def render_overview(overview: Overview) -> str:
         ("Created:", format_fact(overview.created, format_datetime)),
         ("Last modified:", format_fact(overview.last_modified, format_datetime)),
         ("Owner:", format_fact(overview.owner)),
+        ("Comment:", format_fact(overview.comment, _table_comment)),
     ]
     width = max(len(label) for label, _ in rows) + 2
     lines = [header, ""]
@@ -103,7 +105,7 @@ def _schema(columns: Fact[tuple[ColumnInfo, ...]]) -> list[str]:
             column.name,
             column.data_type,
             "yes" if column.nullable else "no",
-            _comment(column.comment),
+            _shorten(column.comment or "", _COLUMN_COMMENT_WIDTH),
         )
         for column in columns.value
     ]
@@ -119,10 +121,18 @@ def _schema(columns: Fact[tuple[ColumnInfo, ...]]) -> list[str]:
     ]
 
 
-def _comment(comment: str | None) -> str:
-    if not comment:
-        return ""
-    text = " ".join(comment.split())
-    if len(text) > _COMMENT_WIDTH:
-        return text[: _COMMENT_WIDTH - 1] + "…"
+def _header_value(fact: Fact[str]) -> str:
+    """Header value; the reason for an unavailable fact is shown on the lines below."""
+    return format_fact(fact) if fact.available else "n/a"
+
+
+def _table_comment(comment: str) -> str:
+    return _shorten(comment, _TABLE_COMMENT_WIDTH) or "–"
+
+
+def _shorten(text: str, width: int) -> str:
+    """Collapse line breaks and whitespace, and cut to width characters including '…'."""
+    text = " ".join(text.split())
+    if len(text) > width:
+        return text[: width - 1] + "…"
     return text

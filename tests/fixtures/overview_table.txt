@@ -12,6 +12,7 @@ Deleted file retention:  not set (default)
 Created:                 2024-03-12 08:14
 Last modified:           2026-09-30 03:12
 Owner:                   team-x
+Comment:                 Inntekt per skattyter og inntektsår. Kilde: likningsgrunnlaget, levert nattlig …
 
 SCHEMA
   #  name          type                                  nullable  comment

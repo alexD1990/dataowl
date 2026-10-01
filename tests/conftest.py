@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import re
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Protocol
 
 import pytest
 
@@ -11,6 +11,12 @@ from dataowl.identifiers import TableRef
 
 if TYPE_CHECKING:
     from pyspark.sql.types import StructType
+
+
+class RecordsQueries(Protocol):
+    """Any runner that records executed SQL as (sql, params) pairs."""
+
+    queries: list[tuple[str, dict[str, Any] | None]]
 
 
 class FakeRunner:
@@ -83,14 +89,14 @@ def _strip_leading_comments(sql: str) -> str:
             return sql
 
 
-def assert_read_only(fake: FakeRunner) -> None:
+def assert_read_only(runner: RecordsQueries) -> None:
     """Assert that every executed query is read-only (principle 2).
 
     Each query must start with SELECT, WITH, DESCRIBE or SHOW after leading whitespace and
     comments, and must not contain a forbidden keyword as a whole word. Backtick-quoted
     identifiers are removed before the keyword search, so a table named `update` passes.
     """
-    for sql, _ in fake.queries:
+    for sql, _ in runner.queries:
         assert _READ_ONLY_START.match(_strip_leading_comments(sql)), (
             f"Query does not start with a read-only keyword: {sql}"
         )
