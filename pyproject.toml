@@ -1,20 +1,46 @@
 [build-system]
-requires = ["hatchling"]
+requires = ["hatchling>=1.27"]
 build-backend = "hatchling.build"
 
 [project]
 name = "dataowl"
-version = "0.0.1"
+version = "0.1.0"
 description = "Facts about Databricks data products for building dbt staging models."
 readme = "README.md"
 requires-python = ">=3.10"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Alexandro Dronnen" }]
+keywords = ["databricks", "unity-catalog", "delta-lake", "dbt", "data-engineering"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Database",
+    "Typing :: Typed",
+]
 dependencies = []
+
+[project.urls]
+Homepage = "https://github.com/alexD1990/dataowl"
+Repository = "https://github.com/alexD1990/dataowl"
+Changelog = "https://github.com/alexD1990/dataowl/blob/main/CHANGELOG.md"
+Issues = "https://github.com/alexD1990/dataowl/issues"
 
 [project.optional-dependencies]
 dev = ["pytest", "ruff==0.16.9", "pyspark>=3.4", "mypy==2.3.1"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/dataowl"]
+
+[tool.hatch.build.targets.sdist]
+include = ["src", "tests", "README.md", "LICENSE", "CHANGELOG.md", "pyproject.toml"]
+exclude = ["build_plan.md", ".github"]
 
 [tool.ruff]
 line-length = 100
