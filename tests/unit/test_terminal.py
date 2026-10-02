@@ -46,6 +46,10 @@ def table_overview() -> Overview:
         change_data_feed=Fact(None, source="metadata"),
         log_retention=Fact("interval 60 days", source="metadata"),
         deleted_file_retention=Fact(None, source="metadata"),
+        history_first_commit=Fact(datetime(2026, 9, 2, 3, 10, 2), source="metadata"),
+        history_last_commit=Fact(datetime(2026, 9, 30, 3, 12, 5), source="metadata"),
+        history_num_commits=Fact(29, source="metadata"),
+        history_operations=Fact({"WRITE": 27, "DELETE": 1, "MERGE": 1}, source="metadata"),
         columns=Fact(
             (
                 ColumnInfo("skattyter_id", 0, "STRING", False, None),
@@ -85,6 +89,10 @@ def view_overview() -> Overview:
         change_data_feed=Fact.unavailable("metadata", VIEWS),
         log_retention=Fact.unavailable("metadata", VIEWS),
         deleted_file_retention=Fact.unavailable("metadata", VIEWS),
+        history_first_commit=Fact.unavailable("metadata", VIEWS),
+        history_last_commit=Fact.unavailable("metadata", VIEWS),
+        history_num_commits=Fact.unavailable("metadata", VIEWS),
+        history_operations=Fact.unavailable("metadata", VIEWS),
         columns=Fact(
             (
                 ColumnInfo("skattyter_id", 1, "STRING", True, None),
@@ -122,6 +130,10 @@ def unavailable_overview() -> Overview:
             "has type NoneType",
         ),
         deleted_file_retention=Fact(None, source="metadata"),
+        history_first_commit=Fact.unavailable("metadata", not_delta),
+        history_last_commit=Fact.unavailable("metadata", not_delta),
+        history_num_commits=Fact.unavailable("metadata", not_delta),
+        history_operations=Fact.unavailable("metadata", not_delta),
         columns=Fact.unavailable("metadata", denied),
     )
 
@@ -143,7 +155,7 @@ def test_snapshot(overview: Overview, snapshot: str) -> None:
 
 def test_values_are_aligned() -> None:
     lines = render_overview(table_overview()).splitlines()
-    fact_lines = lines[2 : lines.index("SCHEMA") - 1]
+    fact_lines = lines[2 : lines.index("", 2)]
 
     starts = {len(line) - len(line.split(":", 1)[1].lstrip()) for line in fact_lines}
     assert len(starts) == 1
@@ -199,3 +211,77 @@ def test_schema_number_is_running_number(first_position: int) -> None:
 
     assert [row.split()[0] for row in rows] == ["1", "2", "3"]
     assert [row.split()[1] for row in rows] == ["a", "b", "c"]
+
+
+def _history_lines(overview: Overview) -> list[str]:
+    lines = render_overview(overview).splitlines()
+    start = next(i for i, line in enumerate(lines) if line.startswith("HISTORY"))
+    end = lines.index("SCHEMA")
+    assert lines[start - 1] == ""
+    assert lines[end - 1] == ""
+    return lines[start : end - 1]
+
+
+def test_history_block() -> None:
+    assert _history_lines(table_overview()) == [
+        "HISTORY  (2026-09-02 03:10 – 2026-09-30 03:12, 29 commits)",
+        "  WRITE:   27",
+        "  DELETE:  1",
+        "  MERGE:   1",
+    ]
+
+
+def test_history_values_are_aligned_within_block() -> None:
+    operations = {"WRITE": 1203, "WRITE (overwrite)": 4, "DELETE": 1}
+    overview = dataclasses.replace(
+        table_overview(),
+        history_num_commits=Fact(1208, source="metadata"),
+        history_operations=Fact(operations, source="metadata"),
+    )
+
+    lines = _history_lines(overview)
+
+    assert lines == [
+        "HISTORY  (2026-09-02 03:10 – 2026-09-30 03:12, 1 208 commits)",
+        "  WRITE:              1 203",
+        "  WRITE (overwrite):  4",
+        "  DELETE:             1",
+    ]
+    assert_no_judgement("\n".join(lines))
+
+
+def test_history_single_commit() -> None:
+    commit = Fact(datetime(2026, 9, 30, 3, 12), source="metadata")
+    overview = dataclasses.replace(
+        table_overview(),
+        history_first_commit=commit,
+        history_last_commit=commit,
+        history_num_commits=Fact(1, source="metadata"),
+        history_operations=Fact({"CREATE TABLE": 1}, source="metadata"),
+    )
+
+    assert _history_lines(overview) == [
+        "HISTORY  (2026-09-30 03:12 – 2026-09-30 03:12, 1 commit)",
+        "  CREATE TABLE:  1",
+    ]
+
+
+def test_history_unavailable() -> None:
+    assert _history_lines(view_overview()) == ["HISTORY", "  n/a (Not available for views)"]
+
+
+def test_history_partly_unavailable() -> None:
+    overview = dataclasses.replace(
+        table_overview(),
+        history_first_commit=Fact.unavailable("metadata", "first missing"),
+        history_num_commits=Fact.unavailable("metadata", "count missing"),
+        history_operations=Fact.unavailable("metadata", "operations missing"),
+    )
+
+    lines = _history_lines(overview)
+
+    assert lines == [
+        "HISTORY  (n/a (first missing) – 2026-09-30 03:12, commits: n/a (count missing))",
+        "  n/a (operations missing)",
+    ]
+    assert_no_judgement("\n".join(lines))

@@ -44,6 +44,8 @@ def render_overview(overview: Overview) -> str:
     width = max(len(label) for label, _ in rows) + 2
     lines = [header, ""]
     lines += [f"{label:<{width}}{value}" for label, value in rows]
+    lines += [""]
+    lines += _history(overview)
     lines += ["", "SCHEMA"]
     lines += _schema(overview.columns)
     return "\n".join(lines)
@@ -88,6 +90,35 @@ def _with_secondary(
     if not secondary.available or secondary.value is None:
         return f"{text}  ({label}: {format_fact(secondary)})"
     return f"{text}  ({template.format(fmt(secondary.value))})"
+
+
+def _history(overview: Overview) -> list[str]:
+    facts: list[Fact[Any]] = [
+        overview.history_first_commit,
+        overview.history_last_commit,
+        overview.history_num_commits,
+        overview.history_operations,
+    ]
+    if all(not fact.available for fact in facts) and len({fact.reason for fact in facts}) == 1:
+        return ["HISTORY", f"  {format_fact(overview.history_operations)}"]
+
+    first = format_fact(overview.history_first_commit, format_datetime)
+    last = format_fact(overview.history_last_commit, format_datetime)
+    lines = [f"HISTORY  ({first} – {last}, {_commits(overview.history_num_commits)})"]
+
+    operations = overview.history_operations
+    if not operations.available or operations.value is None:
+        return [*lines, f"  {format_fact(operations)}"]
+    rows = [(f"{operation}:", format_int(n)) for operation, n in operations.value.items()]
+    width = max((len(label) for label, _ in rows), default=0) + 2
+    return lines + [f"  {label:<{width}}{value}" for label, value in rows]
+
+
+def _commits(num_commits: Fact[int]) -> str:
+    if not num_commits.available or num_commits.value is None:
+        return f"commits: {format_fact(num_commits)}"
+    noun = "commit" if num_commits.value == 1 else "commits"
+    return f"{format_int(num_commits.value)} {noun}"
 
 
 def _names(names: tuple[str, ...]) -> str:

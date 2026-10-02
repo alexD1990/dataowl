@@ -66,6 +66,20 @@ class PropertiesInfo:
 
 
 @dataclass(frozen=True)
+class HistoryInfo:
+    """Excerpt of the Delta history from DESCRIBE HISTORY.
+
+    operations holds the number of commits per operation category, ordered by count
+    descending and then by category name.
+    """
+
+    first_commit: Fact[datetime]
+    last_commit: Fact[datetime]
+    num_commits: Fact[int]
+    operations: Fact[dict[str, int]]
+
+
+@dataclass(frozen=True)
 class ColumnInfo:
     """One top-level column from information_schema.columns.
 
@@ -118,6 +132,10 @@ class Overview:
     change_data_feed: Fact[str]
     log_retention: Fact[str]
     deleted_file_retention: Fact[str]
+    history_first_commit: Fact[datetime]
+    history_last_commit: Fact[datetime]
+    history_num_commits: Fact[int]
+    history_operations: Fact[dict[str, int]]
     columns: Fact[tuple[ColumnInfo, ...]]
 
     def to_dict(self) -> dict[str, Any]:

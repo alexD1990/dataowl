@@ -19,10 +19,12 @@ COLUMNS_SQL = r"information_schema\.columns"
 DETAIL_SQL = r"^DESCRIBE DETAIL"
 PROPS_SQL = r"^SHOW TBLPROPERTIES"
 COUNT_SQL = r"^SELECT COUNT\(\*\)"
+HISTORY_SQL = r"^DESCRIBE HISTORY"
 
 CREATED = datetime(2024, 3, 12, 8, 14)
 ALTERED = datetime(2025, 1, 2, 9, 0)
 LAST_MODIFIED = datetime(2026, 9, 30, 3, 12)
+FIRST_COMMIT = datetime(2026, 9, 2, 3, 10)
 
 SCHEMA = StructType(
     [
@@ -101,7 +103,28 @@ def _register_all(fake: FakeRunner, table_type: str = "MANAGED") -> None:
     )
     fake.on(PROPS_SQL, [{"key": "delta.enableChangeDataFeed", "value": "true"}])
     fake.on(COUNT_SQL, [{"n": 1284991}])
+    fake.on(
+        HISTORY_SQL,
+        [
+            _history_row(2, LAST_MODIFIED, "MERGE", None),
+            _history_row(1, datetime(2026, 9, 15, 3, 10), "WRITE", "Append"),
+            _history_row(0, FIRST_COMMIT, "WRITE", "Overwrite"),
+        ],
+    )
     fake.on_schema(SCHEMA)
+
+
+def _history_row(
+    version: int, timestamp: datetime, operation: str, mode: str | None
+) -> dict[str, Any]:
+    return {
+        "version": version,
+        "timestamp": timestamp,
+        "userName": "etl-service@example.com",
+        "operation": operation,
+        "operationParameters": {"mode": mode} if mode is not None else {},
+        "operationMetrics": {"numOutputRows": "10"},
+    }
 
 
 def _queries_matching(fake: FakeRunner, prefix: str) -> list[str]:
@@ -132,12 +155,19 @@ def test_table(fake: FakeRunner) -> None:
     assert overview.change_data_feed == Fact("true", source="metadata")
     assert overview.log_retention == Fact(None, source="metadata")
     assert overview.deleted_file_retention == Fact(None, source="metadata")
+    assert overview.history_first_commit == Fact(FIRST_COMMIT, source="metadata")
+    assert overview.history_last_commit == Fact(LAST_MODIFIED, source="metadata")
+    assert overview.history_num_commits == Fact(3, source="metadata")
+    assert overview.history_operations == Fact(
+        {"MERGE": 1, "WRITE": 1, "WRITE (overwrite)": 1}, source="metadata"
+    )
     assert overview.columns.value is not None
     assert overview.columns.value[0] == ColumnInfo("id", 1, "string", False, "Primary id")
 
     first_query = fake.queries[0][0]
     assert "information_schema.tables" in first_query
-    assert len(fake.queries) == 5
+    assert len(fake.queries) == 6
+    assert len(_queries_matching(fake, "DESCRIBE HISTORY")) == 1
     assert_read_only(fake)
 
 
@@ -149,6 +179,7 @@ def test_view(fake: FakeRunner) -> None:
     assert overview.object_type == Fact(ObjectType.VIEW, source="metadata")
     assert overview.size_bytes == Fact.unavailable("metadata", "Not available for views")
     assert overview.change_data_feed == Fact.unavailable("metadata", "Not available for views")
+    assert overview.history_num_commits == Fact.unavailable("metadata", "Not available for views")
     assert overview.num_rows == Fact.unavailable("exact", "Skipped for VIEW; use count_views=True")
     assert overview.num_columns == Fact(3, source="metadata")
     assert _queries_matching(fake, "DESCRIBE") == []
@@ -173,6 +204,7 @@ def test_several_sources_fail(fake: FakeRunner) -> None:
     fake.on_error(DETAIL_SQL, RuntimeError("[DELTA_TABLE_ONLY_OPERATION] not a Delta table"))
     fake.on_error(COLUMNS_SQL, PermissionError("[INSUFFICIENT_PERMISSIONS] no USE CATALOG"))
     fake.on_error(PROPS_SQL, RuntimeError("[UNSUPPORTED_FEATURE] not supported"))
+    fake.on_error(HISTORY_SQL, RuntimeError("[DELTA_MISSING_DELTA_TABLE] not a Delta table"))
     fake.on_schema(SCHEMA)
 
     overview = inspect("main.sales.orders")
@@ -195,6 +227,10 @@ def test_several_sources_fail(fake: FakeRunner) -> None:
     assert overview.num_rows == Fact.unavailable(
         "exact", "Skipped: object type unknown; use count_views=True"
     )
+    assert overview.history_operations == Fact.unavailable(
+        "metadata", "[DELTA_MISSING_DELTA_TABLE] not a Delta table"
+    )
+    assert len(_queries_matching(fake, "DESCRIBE HISTORY")) == 1
     assert overview.num_fields_nested == Fact(4, source="metadata")
     json.dumps(overview.to_dict())
     assert_read_only(fake)
@@ -268,6 +304,26 @@ def test_to_dict(fake: FakeRunner) -> None:
         "nullable": False,
         "comment": "Primary id",
     }
+    assert data["history_first_commit"] == {
+        "value": "2026-09-02T03:10:00",
+        "source": "metadata",
+        "available": True,
+        "reason": None,
+    }
+    assert data["history_last_commit"]["value"] == "2026-09-30T03:12:00"
+    assert data["history_num_commits"] == {
+        "value": 3,
+        "source": "metadata",
+        "available": True,
+        "reason": None,
+    }
+    assert data["history_operations"] == {
+        "value": {"MERGE": 1, "WRITE": 1, "WRITE (overwrite)": 1},
+        "source": "metadata",
+        "available": True,
+        "reason": None,
+    }
+    assert "etl-service@example.com" not in json.dumps(data)
     assert list(data) == [field for field in Overview.__dataclass_fields__]
 
 

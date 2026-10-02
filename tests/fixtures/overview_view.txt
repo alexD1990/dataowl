@@ -14,6 +14,9 @@ Last modified:           n/a (Not available for views)
 Owner:                   team-x
 Comment:                 –
 
+HISTORY
+  n/a (Not available for views)
+
 SCHEMA
   #  name          type    nullable  comment
   1  skattyter_id  STRING  yes

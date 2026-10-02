@@ -1,0 +1,263 @@
+[
+  {
+    "version": 7,
+    "timestamp": "2026-09-30T03:12:05",
+    "userId": "4711",
+    "userName": "etl-service@example.com",
+    "operation": "WRITE",
+    "operationParameters": {
+      "mode": "Append",
+      "statsOnLoad": "false",
+      "partitionBy": "[]"
+    },
+    "job": {
+      "jobId": "123",
+      "jobName": "orders_load",
+      "jobRunId": "9001",
+      "runId": "9002",
+      "jobOwnerId": "4711",
+      "triggerType": "cron"
+    },
+    "notebook": null,
+    "clusterId": "0930-031000-abcd1234",
+    "readVersion": 6,
+    "isolationLevel": "WriteSerializable",
+    "isBlindAppend": true,
+    "operationMetrics": {
+      "numFiles": "1",
+      "numOutputRows": "4211",
+      "numOutputBytes": "182311"
+    },
+    "userMetadata": null,
+    "engineInfo": "Databricks-Runtime/15.4.x-scala2.12"
+  },
+  {
+    "version": 6,
+    "timestamp": "2026-09-25T03:11:40",
+    "userId": "4711",
+    "userName": "etl-service@example.com",
+    "operation": "DELETE",
+    "operationParameters": {
+      "predicate": "[\"(year#1 < 2020)\"]"
+    },
+    "job": {
+      "jobId": "123",
+      "jobName": "orders_load",
+      "jobRunId": "9001",
+      "runId": "9002",
+      "jobOwnerId": "4711",
+      "triggerType": "cron"
+    },
+    "notebook": null,
+    "clusterId": "0930-031000-abcd1234",
+    "readVersion": 5,
+    "isolationLevel": "WriteSerializable",
+    "isBlindAppend": false,
+    "operationMetrics": {
+      "numRemovedFiles": "2",
+      "numCopiedRows": "0",
+      "numDeletedRows": "15321",
+      "numAddedFiles": "0",
+      "executionTimeMs": "1840"
+    },
+    "userMetadata": null,
+    "engineInfo": "Databricks-Runtime/15.4.x-scala2.12"
+  },
+  {
+    "version": 5,
+    "timestamp": "2026-09-20T03:10:59",
+    "userId": "4711",
+    "userName": "etl-service@example.com",
+    "operation": "UPDATE",
+    "operationParameters": {
+      "predicate": "[\"(id#0 = 42)\"]"
+    },
+    "job": {
+      "jobId": "123",
+      "jobName": "orders_load",
+      "jobRunId": "9001",
+      "runId": "9002",
+      "jobOwnerId": "4711",
+      "triggerType": "cron"
+    },
+    "notebook": null,
+    "clusterId": "0930-031000-abcd1234",
+    "readVersion": 4,
+    "isolationLevel": "WriteSerializable",
+    "isBlindAppend": false,
+    "operationMetrics": {
+      "numRemovedFiles": "1",
+      "numUpdatedRows": "1",
+      "numCopiedRows": "3110",
+      "numAddedFiles": "1"
+    },
+    "userMetadata": null,
+    "engineInfo": "Databricks-Runtime/15.4.x-scala2.12"
+  },
+  {
+    "version": 4,
+    "timestamp": "2026-09-15T03:10:31",
+    "userId": "4711",
+    "userName": "etl-service@example.com",
+    "operation": "MERGE",
+    "operationParameters": {
+      "predicate": "[\"(id#0 = id#10)\"]",
+      "matchedPredicates": "[{\"actionType\":\"update\"}]",
+      "notMatchedPredicates": "[{\"actionType\":\"insert\"}]",
+      "notMatchedBySourcePredicates": "[]"
+    },
+    "job": {
+      "jobId": "123",
+      "jobName": "orders_load",
+      "jobRunId": "9001",
+      "runId": "9002",
+      "jobOwnerId": "4711",
+      "triggerType": "cron"
+    },
+    "notebook": null,
+    "clusterId": "0930-031000-abcd1234",
+    "readVersion": 3,
+    "isolationLevel": "WriteSerializable",
+    "isBlindAppend": false,
+    "operationMetrics": {
+      "numTargetRowsInserted": "812",
+      "numTargetRowsUpdated": "97",
+      "numTargetRowsDeleted": "0",
+      "numTargetRowsCopied": "4022",
+      "numOutputRows": "4931",
+      "numSourceRows": "909",
+      "numTargetFilesAdded": "2",
+      "numTargetFilesRemoved": "1"
+    },
+    "userMetadata": null,
+    "engineInfo": "Databricks-Runtime/15.4.x-scala2.12"
+  },
+  {
+    "version": 3,
+    "timestamp": "2026-09-10T03:10:12",
+    "userId": "4711",
+    "userName": "etl-service@example.com",
+    "operation": "WRITE",
+    "operationParameters": {
+      "mode": "Append",
+      "statsOnLoad": "false",
+      "partitionBy": "[]"
+    },
+    "job": {
+      "jobId": "123",
+      "jobName": "orders_load",
+      "jobRunId": "9001",
+      "runId": "9002",
+      "jobOwnerId": "4711",
+      "triggerType": "cron"
+    },
+    "notebook": null,
+    "clusterId": "0930-031000-abcd1234",
+    "readVersion": 2,
+    "isolationLevel": "WriteSerializable",
+    "isBlindAppend": true,
+    "operationMetrics": {
+      "numFiles": "1",
+      "numOutputRows": "3987",
+      "numOutputBytes": "171002"
+    },
+    "userMetadata": null,
+    "engineInfo": "Databricks-Runtime/15.4.x-scala2.12"
+  },
+  {
+    "version": 2,
+    "timestamp": "2026-09-05T03:10:07",
+    "userId": "4711",
+    "userName": "etl-service@example.com",
+    "operation": "OPTIMIZE",
+    "operationParameters": {
+      "predicate": "[]",
+      "auto": "false",
+      "clusterBy": "[]",
+      "zOrderBy": "[]"
+    },
+    "job": {
+      "jobId": "123",
+      "jobName": "orders_load",
+      "jobRunId": "9001",
+      "runId": "9002",
+      "jobOwnerId": "4711",
+      "triggerType": "cron"
+    },
+    "notebook": null,
+    "clusterId": "0930-031000-abcd1234",
+    "readVersion": 1,
+    "isolationLevel": "WriteSerializable",
+    "isBlindAppend": false,
+    "operationMetrics": {
+      "numRemovedFiles": "6",
+      "numAddedFiles": "1",
+      "numRemovedBytes": "802112",
+      "numAddedBytes": "790031"
+    },
+    "userMetadata": null,
+    "engineInfo": "Databricks-Runtime/15.4.x-scala2.12"
+  },
+  {
+    "version": 1,
+    "timestamp": "2026-09-03T03:10:02",
+    "userId": "4711",
+    "userName": "etl-service@example.com",
+    "operation": "WRITE",
+    "operationParameters": {
+      "mode": "Overwrite",
+      "statsOnLoad": "false",
+      "partitionBy": "[\"year\"]"
+    },
+    "job": {
+      "jobId": "123",
+      "jobName": "orders_load",
+      "jobRunId": "9001",
+      "runId": "9002",
+      "jobOwnerId": "4711",
+      "triggerType": "cron"
+    },
+    "notebook": null,
+    "clusterId": "0930-031000-abcd1234",
+    "readVersion": 0,
+    "isolationLevel": "WriteSerializable",
+    "isBlindAppend": false,
+    "operationMetrics": {
+      "numFiles": "6",
+      "numOutputRows": "1270110",
+      "numOutputBytes": "88012311"
+    },
+    "userMetadata": null,
+    "engineInfo": "Databricks-Runtime/15.4.x-scala2.12"
+  },
+  {
+    "version": 0,
+    "timestamp": "2026-09-02T03:10:00",
+    "userId": "4711",
+    "userName": "etl-service@example.com",
+    "operation": "CREATE TABLE",
+    "operationParameters": {
+      "partitionBy": "[\"year\"]",
+      "clusterBy": "[]",
+      "description": null,
+      "isManaged": "true",
+      "properties": "{}"
+    },
+    "job": {
+      "jobId": "123",
+      "jobName": "orders_load",
+      "jobRunId": "9001",
+      "runId": "9002",
+      "jobOwnerId": "4711",
+      "triggerType": "cron"
+    },
+    "notebook": null,
+    "clusterId": "0930-031000-abcd1234",
+    "readVersion": null,
+    "isolationLevel": "WriteSerializable",
+    "isBlindAppend": true,
+    "operationMetrics": {},
+    "userMetadata": null,
+    "engineInfo": "Databricks-Runtime/15.4.x-scala2.12"
+  }
+]

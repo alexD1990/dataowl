@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 from dataowl.collect.columns import collect_columns
 from dataowl.collect.counts import collect_row_count
 from dataowl.collect.detail import collect_detail
+from dataowl.collect.history import collect_history_excerpt
 from dataowl.collect.properties import collect_properties
 from dataowl.collect.tables import collect_table_info
 from dataowl.errors import TableNotFoundError
@@ -36,6 +37,7 @@ def inspect(
     detail = collect_detail(runner, ref, info.object_type)
     columns = collect_columns(runner, ref)
     properties = collect_properties(runner, ref, info.object_type)
+    history = collect_history_excerpt(runner, ref, info.object_type)
     num_rows = collect_row_count(runner, ref, info.object_type, count_views=count_views)
 
     return Overview(
@@ -58,5 +60,9 @@ def inspect(
         change_data_feed=properties.change_data_feed,
         log_retention=properties.log_retention,
         deleted_file_retention=properties.deleted_file_retention,
+        history_first_commit=history.first_commit,
+        history_last_commit=history.last_commit,
+        history_num_commits=history.num_commits,
+        history_operations=history.operations,
         columns=columns.columns,
     )

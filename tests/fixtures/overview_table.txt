@@ -14,6 +14,11 @@ Last modified:           2026-09-30 03:12
 Owner:                   team-x
 Comment:                 Inntekt per skattyter og inntektsår. Kilde: likningsgrunnlaget, levert nattlig …
 
+HISTORY  (2026-09-02 03:10 – 2026-09-30 03:12, 29 commits)
+  WRITE:   27
+  DELETE:  1
+  MERGE:   1
+
 SCHEMA
   #  name          type                                  nullable  comment
   1  skattyter_id  STRING                                no

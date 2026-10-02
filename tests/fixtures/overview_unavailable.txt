@@ -14,5 +14,8 @@ Last modified:           n/a ([DELTA_TABLE_ONLY_OPERATION] `my-catalog`.`raw`.`e
 Owner:                   n/a ([INSUFFICIENT_PERMISSIONS] User does not have USE CATALOG on Catalog 'my-catalog'.)
 Comment:                 n/a ([INSUFFICIENT_PERMISSIONS] User does not have USE CATALOG on Catalog 'my-catalog'.)
 
+HISTORY
+  n/a ([DELTA_TABLE_ONLY_OPERATION] `my-catalog`.`raw`.`events` is not a Delta table.)
+
 SCHEMA
   n/a ([INSUFFICIENT_PERMISSIONS] User does not have USE CATALOG on Catalog 'my-catalog'.)
