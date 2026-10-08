@@ -4,7 +4,7 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
-## [0.2.0] - YYYY-MM-DD
+## [0.2.0] - 2026-10-08
 
 Column analysis (`analyze`) and an excerpt of the Delta history in `inspect`.
 

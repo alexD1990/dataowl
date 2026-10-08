@@ -136,9 +136,101 @@ Every other failure makes the affected facts `n/a (<reason>)`.
 
 Output for Databricks' public sample data (`samples.nyctaxi.trips`).
 
-<!-- TODO before release: real output of inspect("samples.nyctaxi.trips") -->
+```python
+dataowl.inspect("samples.nyctaxi.trips").show()
+```
 
-<!-- TODO before release: real output of analyze("samples.nyctaxi.trips", ...) -->
+```text
+samples.nyctaxi.trips   (MANAGED, DELTA)
+
+Size:                    354.2 KB
+Files:                   1  (avg 354.2 KB)
+Rows:                    21 932
+Columns:                 6  (6 incl. nested)
+Partitioned by:          –
+Clustered by:            –
+Change Data Feed:        true
+Log retention:           not set (default)
+Deleted file retention:  not set (default)
+Created:                 2025-09-30 11:28
+Last modified:           2026-09-14 15:07
+Owner:                   System user
+Comment:                 –
+
+HISTORY  (2025-09-09 15:05 – 2026-09-14 15:07, 223 commits)
+  CREATE OR REPLACE TABLE AS SELECT:  212
+  SET TBLPROPERTIES:                  11
+
+SCHEMA
+  #  name                   type       nullable  comment
+  1  tpep_pickup_datetime   timestamp  yes
+  2  tpep_dropoff_datetime  timestamp  yes
+  3  trip_distance          double     yes
+  4  fare_amount            double     yes
+  5  pickup_zip             int        yes
+  6  dropoff_zip            int        yes
+```
+
+```python
+dataowl.analyze(
+    "samples.nyctaxi.trips",
+    key=["pickup_zip", ("pickup_zip", "dropoff_zip")],
+    timestamp="tpep_pickup_datetime",
+    compare=("tpep_pickup_datetime", "tpep_dropoff_datetime"),
+).show()
+```
+
+```text
+samples.nyctaxi.trips
+
+PRIMARY KEY  none declared
+
+KEY  pickup_zip
+  Rows:                    21 932
+  Rows with null in key:   0
+  Distinct keys:           128
+  Keys occurring >1 time:  100
+  Rows in those keys:      21 904
+  Rows per key:            median 19 · max 1 227
+    1 row:                 28
+    2–10 rows:             27
+    11–100 rows:           31
+    >100 rows:             42
+
+KEY  pickup_zip + dropoff_zip
+  Rows:                    21 932
+  Rows with null in key:   0
+  Distinct keys:           3 369
+  Keys occurring >1 time:  2 060
+  Rows in those keys:      20 623
+  Rows per key:            median 2 · max 143
+    1 row:                 1 309
+    2–10 rows:             1 533
+    11–100 rows:           518
+    >100 rows:             9
+
+TIMESTAMP  tpep_pickup_datetime
+  Min:             2016-01-01 00:04
+  Max:             2016-02-29 23:51
+  Nulls:           0 (0.00 %)
+  Future values:   0
+  Distinct dates:  60
+  Days between distinct dates:
+    min 1 · median 1 · mean 1 · max 1
+  Rows per day, last 30 complete days (2026-09-08 – 2026-10-07):
+    median 0 · mean 0 · min 0 · max 0
+  Note: gaps are measured in whole days; cadence below one day is not visible.
+  Note: counts reflect current values of the column, not historical changes.
+
+COMPARE  tpep_pickup_datetime → tpep_dropoff_datetime
+  tpep_dropoff_datetime > tpep_pickup_datetime:  21 931
+  tpep_dropoff_datetime = tpep_pickup_datetime:  1
+  tpep_dropoff_datetime < tpep_pickup_datetime:  0
+  Either is null:                                0
+```
+
+The data in `samples.nyctaxi.trips` is from January and February 2016, so every day in the
+rows-per-day window has 0 rows.
 
 ## Principles
 

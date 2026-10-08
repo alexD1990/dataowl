@@ -43,6 +43,9 @@ Known pitfalls in Databricks
   expected values for timestamps_mixed are relative to the time the setup script ran (used
   from step 17). The rows-per-day window is the last `days` whole days without today, so
   with days=30 it covers the days 1..30 before the day the script ran.
+- DATAOWL_IT_SCHEMA is read when the module is imported. If pytest.main runs again in the
+  same notebook with another value, the old value is used. Run
+  dbutils.library.restartPython() before changing the value.
 
 Order: run the setup SQL, set DATAOWL_IT_SCHEMA, run pytest tests/integration.
 """
