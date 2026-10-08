@@ -18,7 +18,7 @@ First release: overview facts for a table (`inspect`).
 - Schema from `information_schema.columns`, and the field count including nested fields
   from the Spark schema.
 - Exact row count with `COUNT(*)`. Skipped for views, materialized views, foreign tables and
-  unknown object types unless `count_views=True`.
+  objects whose type cannot be read, unless `count_views=True`.
 - Change Data Feed, log retention and deleted file retention from `SHOW TBLPROPERTIES`. Not
   run for views.
 - Every fact carries its source (`metadata`, `exact`, `derived`). Facts that cannot be
