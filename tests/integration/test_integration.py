@@ -39,8 +39,10 @@ Known pitfalls in Databricks
   Set sys.dont_write_bytecode = True before running, and disable the pytest cache with
   -p no:cacheprovider. Otherwise pytest can fail or hang while writing __pycache__ and
   .pytest_cache.
-- Run the setup script and the tests on the same day: expected values for
-  timestamps_mixed are relative to the time the setup script ran (used from step 15).
+- Run the setup script and the tests on the same day and in the same session time zone:
+  expected values for timestamps_mixed are relative to the time the setup script ran (used
+  from step 17). The rows-per-day window is the last `days` whole days without today, so
+  with days=30 it covers the days 1..30 before the day the script ran.
 
 Order: run the setup SQL, set DATAOWL_IT_SCHEMA, run pytest tests/integration.
 """
@@ -58,14 +60,15 @@ if not IT_SCHEMA:
 # PySpark is only imported after the check above, lazily through dataowl.runner.get_runner.
 import json  # noqa: E402
 from collections.abc import Iterator  # noqa: E402
-from datetime import datetime  # noqa: E402
+from datetime import date, datetime, timedelta  # noqa: E402
 from typing import TYPE_CHECKING, Any  # noqa: E402
 
 from conftest import assert_read_only  # noqa: E402
 
 import dataowl  # noqa: E402
-from dataowl import TableNotFoundError, inspect  # noqa: E402
+from dataowl import ColumnAnalysis, TableNotFoundError, analyze, inspect  # noqa: E402
 from dataowl.identifiers import TableRef  # noqa: E402
+from dataowl.model.analysis import DayCount, KeyAnalysis  # noqa: E402
 from dataowl.model.facts import Fact  # noqa: E402
 from dataowl.model.overview import ObjectType  # noqa: E402
 from dataowl.runner import SqlRunner, get_runner  # noqa: E402
@@ -80,6 +83,9 @@ TABLES = [
     "merge_history",
     "nested_schema",
     "simple_view",
+    "orders_composite",
+    "cadence_weekly",
+    "created_updated",
 ]
 VIEWS = "Not available for views"
 
@@ -105,7 +111,7 @@ class RecordingRunner:
 
 @pytest.fixture
 def recorder(monkeypatch: pytest.MonkeyPatch) -> Iterator[RecordingRunner]:
-    """Route inspect() through a RecordingRunner, and check principle 2 on the real SQL."""
+    """Route inspect() and analyze() through a RecordingRunner, and check principle 2."""
     runner = RecordingRunner(get_runner())
     monkeypatch.setattr(dataowl, "get_runner", lambda spark=None: runner)
     yield runner
@@ -206,3 +212,261 @@ def test_to_dict_and_show(
 def test_table_not_found(recorder: RecordingRunner) -> None:
     with pytest.raises(TableNotFoundError):
         inspect(table("does_not_exist"))
+
+
+# analyze() and the inspect history excerpt. Expected values are the comments at each table
+# in setup_test_tables.sql.
+
+KEY_FIELDS = (
+    "total_rows",
+    "rows_with_null_key",
+    "distinct_keys",
+    "duplicate_keys",
+    "rows_in_duplicate_keys",
+    "max_rows_per_key",
+    "median_rows_per_key",
+    "keys_with_1_row",
+    "keys_with_2_10_rows",
+    "keys_with_11_100_rows",
+    "keys_with_over_100_rows",
+)
+
+
+def key_values(key: KeyAnalysis) -> dict[str, Any]:
+    """The value of every fact, after checking that each one is available and exact."""
+    result = {}
+    for name in KEY_FIELDS:
+        fact = getattr(key, name)
+        assert fact.available, f"{name}: {fact.reason}"
+        assert fact.source == "exact"
+        result[name] = fact.value
+    return result
+
+
+def session_today(runner: RecordingRunner) -> date:
+    """current_date() of the Spark session, which is the date analyze() uses."""
+    today = runner.query("SELECT current_date() AS today")[0]["today"]
+    assert isinstance(today, date) and not isinstance(today, datetime)
+    return today
+
+
+def test_analyze_keys_with_duplicates(recorder: RecordingRunner) -> None:
+    analysis = analyze(table("keys_with_duplicates"), key=["key_id", ("key_id", "key_part")])
+
+    single, composite = analysis.keys
+    assert single.columns == ("key_id",)
+    assert key_values(single) == {
+        "total_rows": 1000,
+        "rows_with_null_key": 50,
+        "distinct_keys": 800,
+        "duplicate_keys": 101,
+        "rows_in_duplicate_keys": 251,
+        "max_rows_per_key": 51,
+        "median_rows_per_key": 1.0,
+        "keys_with_1_row": 699,
+        "keys_with_2_10_rows": 100,
+        "keys_with_11_100_rows": 1,
+        "keys_with_over_100_rows": 0,
+    }
+    assert composite.columns == ("key_id", "key_part")
+    assert key_values(composite) == {
+        "total_rows": 1000,
+        "rows_with_null_key": 60,
+        "distinct_keys": 841,
+        "duplicate_keys": 52,
+        "rows_in_duplicate_keys": 151,
+        "max_rows_per_key": 26,
+        "median_rows_per_key": 1.0,
+        "keys_with_1_row": 789,
+        "keys_with_2_10_rows": 50,
+        "keys_with_11_100_rows": 2,
+        "keys_with_over_100_rows": 0,
+    }
+    assert analysis.primary_key == Fact(None, source="metadata")
+
+
+def test_analyze_orders_composite(recorder: RecordingRunner) -> None:
+    analysis = analyze(
+        table("orders_composite"), key=["customer_id", "order_id", ("customer_id", "order_id")]
+    )
+
+    customer, order, combination = analysis.keys
+    assert key_values(customer) == {
+        "total_rows": 600,
+        "rows_with_null_key": 0,
+        "distinct_keys": 50,
+        "duplicate_keys": 50,
+        "rows_in_duplicate_keys": 600,
+        "max_rows_per_key": 12,
+        "median_rows_per_key": 12.0,
+        "keys_with_1_row": 0,
+        "keys_with_2_10_rows": 0,
+        "keys_with_11_100_rows": 50,
+        "keys_with_over_100_rows": 0,
+    }
+    assert key_values(order) == {
+        "total_rows": 600,
+        "rows_with_null_key": 0,
+        "distinct_keys": 12,
+        "duplicate_keys": 12,
+        "rows_in_duplicate_keys": 600,
+        "max_rows_per_key": 50,
+        "median_rows_per_key": 50.0,
+        "keys_with_1_row": 0,
+        "keys_with_2_10_rows": 0,
+        "keys_with_11_100_rows": 12,
+        "keys_with_over_100_rows": 0,
+    }
+    assert key_values(combination) == {
+        "total_rows": 600,
+        "rows_with_null_key": 0,
+        "distinct_keys": 600,
+        "duplicate_keys": 0,
+        "rows_in_duplicate_keys": 0,
+        "max_rows_per_key": 1,
+        "median_rows_per_key": 1.0,
+        "keys_with_1_row": 600,
+        "keys_with_2_10_rows": 0,
+        "keys_with_11_100_rows": 0,
+        "keys_with_over_100_rows": 0,
+    }
+
+    primary_key = analysis.primary_key
+    assert primary_key is not None
+    assert primary_key.available, primary_key.reason
+    assert primary_key.source == "metadata"
+    assert primary_key.value is not None
+    assert tuple(name.lower() for name in primary_key.value) == ("order_id", "customer_id")
+
+
+def test_analyze_without_primary_key(recorder: RecordingRunner) -> None:
+    analysis = analyze(table("small_table"), key="id")
+
+    assert analysis.primary_key == Fact(None, source="metadata")
+
+
+def test_analyze_timestamps_mixed(recorder: RecordingRunner) -> None:
+    analysis = analyze(table("timestamps_mixed"), timestamp=["event_ts", "event_date"])
+    today = session_today(recorder)
+
+    expected_days = tuple(
+        DayCount(today - timedelta(days=offset), 130 if offset == 2 else 30 if offset <= 20 else 0)
+        for offset in range(30, 0, -1)
+    )
+    assert analysis.primary_key is None
+    assert [t.column for t in analysis.timestamps] == ["event_ts", "event_date"]
+    for timestamp in analysis.timestamps:
+        assert timestamp.days == 30
+        assert timestamp.total_rows == Fact(800, source="exact")
+        assert timestamp.null_rows == Fact(50, source="exact")
+        assert timestamp.null_share == Fact(0.0625, source="derived")
+        assert timestamp.future_values == Fact(20, source="exact"), timestamp.column
+        assert timestamp.distinct_dates == Fact(26, source="exact")
+        assert timestamp.min_gap_days == Fact(1, source="exact")
+        assert timestamp.median_gap_days == Fact(1.0, source="exact")
+        assert timestamp.mean_gap_days.value == pytest.approx(16.2)
+        assert timestamp.max_gap_days == Fact(380, source="exact")
+        assert timestamp.window_first_day == Fact(today - timedelta(days=30), source="derived")
+        assert timestamp.window_last_day == Fact(today - timedelta(days=1), source="derived")
+        assert timestamp.rows_per_day == Fact(expected_days, source="derived")
+        assert timestamp.rows_per_day.value is not None
+        assert len(timestamp.rows_per_day.value) == 30
+        assert timestamp.rows_per_day_min == Fact(0, source="derived")
+        assert timestamp.rows_per_day_median == Fact(30.0, source="derived")
+        assert timestamp.rows_per_day_mean.value == pytest.approx(700 / 30)
+        assert timestamp.rows_per_day_max == Fact(130, source="derived")
+
+    event_ts, event_date = analysis.timestamps
+    assert isinstance(event_ts.min_value.value, datetime)
+    assert isinstance(event_ts.max_value.value, datetime)
+    assert event_ts.min_value.value.date() == today - timedelta(days=400)
+    assert event_ts.max_value.value.date() == today + timedelta(days=5)
+    assert event_date.min_value == Fact(today - timedelta(days=400), source="exact")
+    assert event_date.max_value == Fact(today + timedelta(days=5), source="exact")
+    assert not isinstance(event_date.min_value.value, datetime)
+
+
+def test_analyze_cadence_weekly(recorder: RecordingRunner) -> None:
+    analysis = analyze(table("cadence_weekly"), timestamp="event_date")
+
+    [timestamp] = analysis.timestamps
+    assert timestamp.total_rows == Fact(57, source="exact")
+    assert timestamp.null_rows == Fact(0, source="exact")
+    assert timestamp.min_value == Fact(date(2026, 1, 5), source="exact")
+    assert timestamp.max_value == Fact(date(2026, 5, 18), source="exact")
+    assert timestamp.future_values == Fact(0, source="exact")
+    assert timestamp.distinct_dates == Fact(19, source="exact")
+    assert timestamp.min_gap_days == Fact(7, source="exact")
+    assert timestamp.median_gap_days == Fact(7.0, source="exact")
+    assert timestamp.mean_gap_days.available
+    assert timestamp.mean_gap_days.value == pytest.approx(133 / 18)
+    assert timestamp.max_gap_days == Fact(14, source="exact")
+
+
+def test_analyze_created_updated(recorder: RecordingRunner) -> None:
+    timestamps = analyze(table("created_updated"), compare=("created_at", "updated_at"))
+    dates = analyze(table("created_updated"), compare=("created_at", "updated_date"))
+
+    assert timestamps.comparison is not None
+    assert timestamps.comparison.second_after_first == Fact(40, source="exact")
+    assert timestamps.comparison.second_equal_first == Fact(30, source="exact")
+    assert timestamps.comparison.second_before_first == Fact(10, source="exact")
+    assert timestamps.comparison.either_null == Fact(20, source="exact")
+
+    # updated_date is compared as that date at 00:00:00, so the same day as created_at
+    # (10:30) counts as before.
+    assert dates.comparison is not None
+    assert dates.comparison.second_data_type.lower() == "date"
+    assert dates.comparison.second_after_first == Fact(20, source="exact")
+    assert dates.comparison.second_equal_first == Fact(0, source="exact")
+    assert dates.comparison.second_before_first == Fact(60, source="exact")
+    assert dates.comparison.either_null == Fact(20, source="exact")
+
+
+def test_merge_history_excerpt(recorder: RecordingRunner) -> None:
+    overview = inspect(table("merge_history"))
+
+    operations = overview.history_operations
+    assert operations.available, operations.reason
+    assert operations.value is not None
+    # Operation categories as collect/history.py produces them. INSERT OVERWRITE is a WRITE
+    # commit with mode Overwrite, counted as "WRITE (overwrite)".
+    known = {"WRITE": 2, "WRITE (overwrite)": 1, "MERGE": 1, "UPDATE": 1, "DELETE": 1}
+    for operation, count in known.items():
+        assert operations.value.get(operation) == count, (operation, operations.value)
+    # Assumption verified here: Databricks records the CREATE TABLE statement as the
+    # operation "CREATE TABLE".
+    assert operations.value.get("CREATE TABLE") == 1, operations.value
+    # Other operations, such as OPTIMIZE from predictive optimization, are allowed.
+    num_commits = overview.history_num_commits
+    assert num_commits.available and num_commits.value is not None
+    assert num_commits.value >= 7
+    assert num_commits.value == sum(operations.value.values())
+    first, last = overview.history_first_commit, overview.history_last_commit
+    assert isinstance(first.value, datetime) and isinstance(last.value, datetime)
+    assert first.value <= last.value
+
+
+@pytest.mark.parametrize(
+    ("name", "kwargs"),
+    [
+        ("keys_with_duplicates", {"key": ["key_id", ("key_id", "key_part")]}),
+        ("orders_composite", {"key": ("customer_id", "order_id")}),
+        ("timestamps_mixed", {"timestamp": ["event_ts", "event_date"]}),
+        ("cadence_weekly", {"timestamp": "event_date", "days": 7}),
+        ("created_updated", {"compare": ("created_at", "updated_date")}),
+    ],
+)
+def test_analyze_to_dict_and_show(
+    recorder: RecordingRunner,
+    capsys: pytest.CaptureFixture[str],
+    name: str,
+    kwargs: dict[str, Any],
+) -> None:
+    analysis = analyze(table(name), **kwargs)
+
+    assert isinstance(analysis, ColumnAnalysis)
+    json.dumps(analysis.to_dict())
+    analysis.show()
+    analysis.show(show_days=True)
+    assert analysis.table.table in capsys.readouterr().out
