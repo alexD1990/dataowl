@@ -1,0 +1,83 @@
+[
+  {
+    "version": 12,
+    "timestamp": "2026-10-03T03:10:44",
+    "userId": "4711",
+    "userName": "etl-service@example.com",
+    "operation": "FUTURE OPERATION",
+    "operationParameters": {
+      "target": "orders"
+    },
+    "job": {
+      "jobId": "123",
+      "jobName": "orders_load",
+      "jobRunId": "9001",
+      "runId": "9002",
+      "jobOwnerId": "4711",
+      "triggerType": "cron"
+    },
+    "notebook": null,
+    "clusterId": "0930-031000-abcd1234",
+    "readVersion": 11,
+    "isolationLevel": "WriteSerializable",
+    "isBlindAppend": false,
+    "operationMetrics": {
+      "numWidgetsTouched": "17",
+      "futureDurationMs": "not a number",
+      "numOutputRows": "250"
+    },
+    "userMetadata": null,
+    "engineInfo": "Databricks-Runtime/16.4.x-scala2.12"
+  },
+  {
+    "version": 11,
+    "timestamp": "2026-10-02T03:10:21",
+    "userId": "4711",
+    "userName": "etl-service@example.com",
+    "operation": "SET TBLPROPERTIES",
+    "operationParameters": {
+      "properties": "{\"delta.enableChangeDataFeed\":\"true\"}"
+    },
+    "job": {
+      "jobId": "123",
+      "jobName": "orders_load",
+      "jobRunId": "9001",
+      "runId": "9002",
+      "jobOwnerId": "4711",
+      "triggerType": "cron"
+    },
+    "notebook": null,
+    "clusterId": "0930-031000-abcd1234",
+    "readVersion": 10,
+    "isolationLevel": "WriteSerializable",
+    "isBlindAppend": true,
+    "operationMetrics": null,
+    "userMetadata": null,
+    "engineInfo": "Databricks-Runtime/16.4.x-scala2.12"
+  },
+  {
+    "version": 10,
+    "timestamp": "2026-10-01T03:10:05",
+    "userId": "4711",
+    "userName": "etl-service@example.com",
+    "operation": "ADD COLUMNS",
+    "operationParameters": {
+      "columns": "[{\"column\":{\"name\":\"channel\",\"type\":\"string\",\"nullable\":true}}]"
+    },
+    "job": {
+      "jobId": "123",
+      "jobName": "orders_load",
+      "jobRunId": "9001",
+      "runId": "9002",
+      "jobOwnerId": "4711",
+      "triggerType": "cron"
+    },
+    "notebook": null,
+    "clusterId": "0930-031000-abcd1234",
+    "readVersion": 9,
+    "isolationLevel": "WriteSerializable",
+    "isBlindAppend": true,
+    "userMetadata": null,
+    "engineInfo": "Databricks-Runtime/16.4.x-scala2.12"
+  }
+]
