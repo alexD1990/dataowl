@@ -29,7 +29,7 @@ dependencies = []
 [project.urls]
 Homepage = "https://github.com/alexD1990/dataowl"
 Repository = "https://github.com/alexD1990/dataowl"
-Changelog = "https://github.com/alexD1990/dataowl/blob/main/CHANGELOG.md"
+Changelog = "https://github.com/alexD1990/dataowl/blob/master/CHANGELOG.md"
 Issues = "https://github.com/alexD1990/dataowl/issues"
 
 [project.optional-dependencies]
