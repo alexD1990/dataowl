@@ -993,6 +993,7 @@ def test_history_notes_are_facts_only() -> None:
     assert HISTORY_NOTES == (
         "history is limited by delta.logRetentionDuration; counts cover the window above",
         "rows replaced by WRITE (overwrite) are not counted as deleted",
+        "the oldest day in the window may be incomplete",
     )
     for note in _analysis().notes:
         assert_no_judgement(note)

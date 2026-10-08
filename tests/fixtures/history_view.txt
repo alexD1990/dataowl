@@ -1,0 +1,8 @@
+main.sales.orders_v
+
+HISTORY
+  n/a (Not available for views)
+
+Note: history is limited by delta.logRetentionDuration; counts cover the window above.
+Note: rows replaced by WRITE (overwrite) are not counted as deleted.
+Note: the oldest day in the window may be incomplete.

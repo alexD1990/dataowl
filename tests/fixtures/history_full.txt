@@ -1,0 +1,31 @@
+main.sales.orders
+
+HISTORY  (2026-09-02 03:10 – 2026-09-30 03:12, 29 days, 8 commits)
+  Time zone:        Europe/Oslo (session)
+  Commits per day:  median 0 · min 0 · max 1
+  Commits per hour of day:
+    03:00  7
+    14:00  1
+
+OPERATIONS
+  WRITE:              2
+  CREATE TABLE:       1
+  DELETE:             1
+  MERGE:              1
+  OPTIMIZE:           1
+  UPDATE:             1
+  WRITE (overwrite):  1
+
+ROWS
+  operation          rows      commits  sum        median     max
+  WRITE              inserted  2/2      8 198      4 099      4 211
+  DELETE             deleted   1/1      15 321     15 321     15 321
+  MERGE              inserted  1/1      812        812        812
+  MERGE              updated   1/1      97         97         97
+  MERGE              deleted   1/1      0          0          0
+  UPDATE             updated   1/1      1          1          1
+  WRITE (overwrite)  inserted  1/1      1 270 110  1 270 110  1 270 110
+
+Note: history is limited by delta.logRetentionDuration; counts cover the window above.
+Note: rows replaced by WRITE (overwrite) are not counted as deleted.
+Note: the oldest day in the window may be incomplete.

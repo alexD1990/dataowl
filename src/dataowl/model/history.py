@@ -48,7 +48,8 @@ class CommitInfo:
 
 RETENTION_NOTE = "history is limited by delta.logRetentionDuration; counts cover the window above"
 OVERWRITE_NOTE = "rows replaced by WRITE (overwrite) are not counted as deleted"
-HISTORY_NOTES = (RETENTION_NOTE, OVERWRITE_NOTE)
+INCOMPLETE_DAY_NOTE = "the oldest day in the window may be incomplete"
+HISTORY_NOTES = (RETENTION_NOTE, OVERWRITE_NOTE, INCOMPLETE_DAY_NOTE)
 
 
 @dataclass(frozen=True)
@@ -118,3 +119,8 @@ class HistoryAnalysis:
     def to_dict(self) -> dict[str, Any]:
         result: dict[str, Any] = to_jsonable(self)
         return result
+
+    def show(self) -> None:
+        from dataowl.render.terminal import render_history
+
+        print(render_history(self))

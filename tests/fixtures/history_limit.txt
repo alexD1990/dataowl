@@ -1,0 +1,23 @@
+main.sales.orders
+
+HISTORY  (2026-09-20 03:10 – 2026-09-30 03:12, 11 days, 3 commits)
+  Limit:            newest 3 commits
+  Time zone:        Etc/UTC (session)
+  Commits per day:  median 0 · min 0 · max 1
+  Commits per hour of day:
+    03:00  3
+
+OPERATIONS
+  DELETE:  1
+  UPDATE:  1
+  WRITE:   1
+
+ROWS
+  operation  rows      commits  sum    median  max
+  DELETE     deleted   0/1      –      –       –
+  UPDATE     updated   1/1      1      1       1
+  WRITE      inserted  1/1      4 211  4 211   4 211
+
+Note: history is limited by delta.logRetentionDuration; counts cover the window above.
+Note: rows replaced by WRITE (overwrite) are not counted as deleted.
+Note: the oldest day in the window may be incomplete.

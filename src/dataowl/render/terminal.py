@@ -25,6 +25,7 @@ if TYPE_CHECKING:
         TimestampAnalysis,
     )
     from dataowl.model.facts import Fact
+    from dataowl.model.history import HistoryAnalysis, HourCount, RowStats
     from dataowl.model.overview import ColumnInfo, Overview
 
 T = TypeVar("T")
@@ -385,3 +386,110 @@ def _same_unavailable(facts: list[Fact[Any]]) -> bool:
 
 def _date_or_datetime(value: date) -> str:
     return format_datetime(value) if isinstance(value, datetime) else format_date(value)
+
+
+def render_history(analysis: HistoryAnalysis) -> str:
+    """Header, HISTORY with the observation window, OPERATIONS, ROWS and the notes.
+
+    Blocks are separated by an empty line. When the window is unavailable, HISTORY shows
+    the reason, and OPERATIONS and ROWS are left out if unavailable for the same reason.
+    """
+    blocks: list[list[str]] = [[analysis.table.display_name()]]
+    window: list[Fact[Any]] = [
+        analysis.first_commit,
+        analysis.last_commit,
+        analysis.num_days,
+        analysis.num_commits,
+    ]
+    if all(not fact.available for fact in window):
+        reason = analysis.first_commit.reason
+        blocks.append(["HISTORY", f"  {format_fact(analysis.first_commit)}"])
+        if analysis.operations.available or analysis.operations.reason != reason:
+            blocks.append(_operations_block(analysis.operations))
+        if analysis.row_stats.available or analysis.row_stats.reason != reason:
+            blocks.append(_rows_block(analysis.row_stats))
+    else:
+        blocks.append(_history_block(analysis))
+        blocks.append(_operations_block(analysis.operations))
+        blocks.append(_rows_block(analysis.row_stats))
+    blocks.append([f"Note: {note}." for note in analysis.notes])
+    return "\n\n".join("\n".join(block) for block in blocks)
+
+
+def _history_block(analysis: HistoryAnalysis) -> list[str]:
+    first = format_fact(analysis.first_commit, format_datetime)
+    last = format_fact(analysis.last_commit, format_datetime)
+    days = _days(analysis.num_days)
+    header = f"HISTORY  ({first} – {last}, {days}, {_commits(analysis.num_commits)})"
+    rows = []
+    if analysis.limit is not None:
+        noun = "commit" if analysis.limit == 1 else "commits"
+        rows.append(("Limit:", f"newest {format_int(analysis.limit)} {noun}"))
+    rows.append(("Time zone:", format_fact(analysis.time_zone, _session_time_zone)))
+    per_day = _numbers(
+        [
+            ("median", analysis.commits_per_day_median, format_decimal),
+            ("min", analysis.commits_per_day_min, format_int),
+            ("max", analysis.commits_per_day_max, format_int),
+        ]
+    )
+    rows.append(("Commits per day:", per_day))
+    lines = [header, *_aligned(rows), "  Commits per hour of day:"]
+    per_hour = analysis.commits_per_hour
+    if not per_hour.available or per_hour.value is None:
+        return [*lines, f"    {format_fact(per_hour)}"]
+    return lines + _hour_table(per_hour.value)
+
+
+def _days(num_days: Fact[int]) -> str:
+    if not num_days.available or num_days.value is None:
+        return f"days: {format_fact(num_days)}"
+    noun = "day" if num_days.value == 1 else "days"
+    return f"{format_int(num_days.value)} {noun}"
+
+
+def _session_time_zone(time_zone: str) -> str:
+    return f"{time_zone} (session)"
+
+
+def _hour_table(hours: tuple[HourCount, ...]) -> list[str]:
+    """One line per hour with commits; hours without commits are left out."""
+    counts = [(hour.hour, format_int(hour.commits)) for hour in hours if hour.commits]
+    width = max((len(count) for _, count in counts), default=0)
+    return [f"    {hour:02d}:00  {count:>{width}}" for hour, count in counts]
+
+
+def _operations_block(operations: Fact[dict[str, int]]) -> list[str]:
+    if not operations.available or operations.value is None:
+        return ["OPERATIONS", f"  {format_fact(operations)}"]
+    if not operations.value:
+        return ["OPERATIONS", "  –"]
+    rows = [(f"{operation}:", format_int(n)) for operation, n in operations.value.items()]
+    return ["OPERATIONS", *_aligned(rows)]
+
+
+def _rows_block(row_stats: Fact[tuple[RowStats, ...]]) -> list[str]:
+    if not row_stats.available or row_stats.value is None:
+        return ["ROWS", f"  {format_fact(row_stats)}"]
+    if not row_stats.value:
+        return ["ROWS", "  –"]
+
+    table = [("operation", "rows", "commits", "sum", "median", "max")]
+    table += [
+        (
+            stats.operation,
+            stats.kind,
+            f"{format_int(stats.commits_with_metric)}/{format_int(stats.commits)}",
+            "–" if stats.sum is None else format_int(stats.sum),
+            "–" if stats.median is None else format_decimal(stats.median),
+            "–" if stats.max is None else format_int(stats.max),
+        )
+        for stats in row_stats.value
+    ]
+    widths = [max(len(row[i]) for row in table) for i in range(len(table[0]))]
+    return ["ROWS"] + [
+        (
+            "  " + "  ".join(cell.ljust(width) for cell, width in zip(row, widths, strict=True))
+        ).rstrip()
+        for row in table
+    ]
