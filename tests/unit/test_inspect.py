@@ -351,4 +351,10 @@ def test_show_prints_rendered_overview(
 
 
 def test_public_api() -> None:
-    assert set(dataowl.__all__) == {"inspect", "Overview", "TableNotFoundError"}
+    assert set(dataowl.__all__) == {
+        "ColumnAnalysis",
+        "Overview",
+        "TableNotFoundError",
+        "analyze",
+        "inspect",
+    }

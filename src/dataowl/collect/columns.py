@@ -68,9 +68,12 @@ def count_fields(schema: StructType) -> int:
     return nested(schema)
 
 
-def _top_level_columns(
-    runner: SqlRunner, ref: TableRef
-) -> tuple[Fact[tuple[ColumnInfo, ...]], Fact[int]]:
+def collect_column_infos(runner: SqlRunner, ref: TableRef) -> Fact[tuple[ColumnInfo, ...]]:
+    """Read top-level columns from information_schema.columns, in ordinal order.
+
+    Does not read the Spark schema. An error, no rows and an unexpected row format make the
+    fact unavailable.
+    """
     result = safe_query(
         runner,
         _QUERY.format(catalog=ref.quoted_catalog()),
@@ -79,17 +82,27 @@ def _top_level_columns(
         {"schema": ref.schema.lower(), "table": ref.table.lower()},
     )
     if isinstance(result, Exception):
-        reason = short_reason(result)
-        return Fact.unavailable("metadata", reason), Fact.unavailable("metadata", reason)
+        return Fact.unavailable("metadata", short_reason(result))
     if not result:
-        return Fact.unavailable("metadata", NO_COLUMNS), Fact.unavailable("metadata", NO_COLUMNS)
+        return Fact.unavailable("metadata", NO_COLUMNS)
 
     try:
         columns = tuple(_column(row) for row in result)
     except ValueError as exc:
-        reason = f"Unexpected row format in information_schema.columns: {exc}"
-        return Fact.unavailable("metadata", reason), Fact.unavailable("metadata", reason)
-    return Fact(columns, source="metadata"), Fact(len(columns), source="metadata")
+        return Fact.unavailable(
+            "metadata", f"Unexpected row format in information_schema.columns: {exc}"
+        )
+    return Fact(columns, source="metadata")
+
+
+def _top_level_columns(
+    runner: SqlRunner, ref: TableRef
+) -> tuple[Fact[tuple[ColumnInfo, ...]], Fact[int]]:
+    columns = collect_column_infos(runner, ref)
+    if not columns.available or columns.value is None:
+        assert columns.reason is not None  # guaranteed by Fact.__post_init__
+        return columns, Fact.unavailable("metadata", columns.reason)
+    return columns, Fact(len(columns.value), source="metadata")
 
 
 def _column(row: dict[str, Any]) -> ColumnInfo:

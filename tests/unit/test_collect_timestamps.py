@@ -12,6 +12,7 @@ from dataowl.collect.timestamps import (
     FEWER_THAN_TWO_DATES,
     NO_AGGREGATE_ROWS,
     NO_NON_NULL_VALUES,
+    NO_ROWS,
     collect_timestamp_analyses,
     collect_timestamp_analysis,
     fill_days,
@@ -214,6 +215,7 @@ def test_timestamp_column(fake_runner: FakeRunner) -> None:
     assert analysis.data_type == "timestamp"
     assert analysis.total_rows == Fact(1000, source="exact")
     assert analysis.null_rows == Fact(10, source="exact")
+    assert analysis.null_share == Fact(0.01, source="derived")
     assert analysis.min_value == Fact(datetime(2024, 1, 1, 0, 5), source="exact")
     assert analysis.max_value == Fact(datetime(2026, 10, 7, 23, 50), source="exact")
     assert analysis.future_values == Fact(0, source="exact")
@@ -314,6 +316,52 @@ def test_null_only_column(fake_runner: FakeRunner) -> None:
     assert analysis.rows_per_day_max == Fact(0, source="derived")
     assert _sql(fake_runner, GAPS) == []
     assert len(fake_runner.queries) == 2
+
+
+def test_null_share_of_null_only_column(fake_runner: FakeRunner) -> None:
+    _register(fake_runner, aggregate=[_aggregate_row(null_rows=1000, distinct_dates=0)])
+
+    analysis = collect_timestamp_analysis(fake_runner, REF, CREATED_AT, 30)
+
+    assert analysis.null_share == Fact(1.0, source="derived")
+
+
+def test_null_share_without_rows(fake_runner: FakeRunner) -> None:
+    _register(
+        fake_runner,
+        aggregate=[
+            _aggregate_row(
+                total_rows=0, null_rows=0, min_value=None, max_value=None, distinct_dates=0
+            )
+        ],
+        day_rows=[],
+    )
+
+    analysis = collect_timestamp_analysis(fake_runner, REF, CREATED_AT, 30)
+
+    assert analysis.total_rows == Fact(0, source="exact")
+    assert analysis.null_share == Fact.unavailable("derived", NO_ROWS)
+
+
+@pytest.mark.parametrize("name", ["null_rows", "total_rows"])
+def test_null_share_with_unavailable_input(fake_runner: FakeRunner, name: str) -> None:
+    _register(fake_runner, aggregate=[_aggregate_row(**{name: "x"})])
+
+    analysis = collect_timestamp_analysis(fake_runner, REF, CREATED_AT, 30)
+
+    assert analysis.null_share == Fact.unavailable(
+        "derived", f"Unexpected {name} type in timestamp aggregate query result: str"
+    )
+
+
+def test_null_share_with_unavailable_null_rows_and_zero_total(fake_runner: FakeRunner) -> None:
+    _register(fake_runner, aggregate=[_aggregate_row(total_rows=0, null_rows=None)])
+
+    analysis = collect_timestamp_analysis(fake_runner, REF, CREATED_AT, 30)
+
+    assert analysis.null_share == Fact.unavailable(
+        "derived", "Unexpected null_rows type in timestamp aggregate query result: NoneType"
+    )
 
 
 def test_single_distinct_date_skips_gap_query(fake_runner: FakeRunner) -> None:
@@ -459,6 +507,7 @@ def test_aggregate_query_error(fake_runner: FakeRunner) -> None:
     ):
         assert fact == Fact.unavailable("exact", reason)
     for derived in (
+        analysis.null_share,
         analysis.window_first_day,
         analysis.window_last_day,
         analysis.rows_per_day,

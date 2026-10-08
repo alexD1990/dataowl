@@ -4,8 +4,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import date, datetime
+from typing import Any
 
-from dataowl.model.facts import Fact
+from dataowl.identifiers import TableRef
+from dataowl.model.facts import Fact, to_jsonable
 
 
 @dataclass(frozen=True)
@@ -48,7 +50,8 @@ class DayCount:
 class TimestampAnalysis:
     """Time span and cadence of one timestamp, timestamp_ntz or date column.
 
-    min_value and max_value are datetime for timestamp and timestamp_ntz, and date for date.
+    null_share is null_rows / total_rows, from 0 to 1. min_value and max_value are datetime
+    for timestamp and timestamp_ntz, and date for date.
     Gaps are measured in whole days between consecutive distinct dates.
 
     The window is the last `days` whole days, not including the current day, in the session
@@ -61,6 +64,7 @@ class TimestampAnalysis:
     data_type: str
     total_rows: Fact[int]
     null_rows: Fact[int]
+    null_share: Fact[float]
     min_value: Fact[datetime | date]
     max_value: Fact[datetime | date]
     future_values: Fact[int]
@@ -97,3 +101,27 @@ class ComparisonAnalysis:
     second_equal_first: Fact[int]
     second_before_first: Fact[int]
     either_null: Fact[int]
+
+
+@dataclass(frozen=True)
+class ColumnAnalysis:
+    """All facts from analyze(), for the columns the user selected.
+
+    primary_key is None when it was not collected, because key was not given. Fact(None)
+    means that it was collected and no primary key is declared. An unavailable fact means
+    that it could not be collected. A declared primary key is informational and not
+    enforced by Databricks.
+
+    keys and timestamps follow the input order. comparison is None when compare was not
+    given.
+    """
+
+    table: TableRef
+    primary_key: Fact[tuple[str, ...] | None] | None
+    keys: tuple[KeyAnalysis, ...]
+    timestamps: tuple[TimestampAnalysis, ...]
+    comparison: ComparisonAnalysis | None
+
+    def to_dict(self) -> dict[str, Any]:
+        result: dict[str, Any] = to_jsonable(self)
+        return result

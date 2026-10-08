@@ -20,6 +20,7 @@ NO_AGGREGATE_ROWS = "Timestamp aggregate query returned no rows"
 NO_GAP_ROWS = "Gap query returned no rows"
 FEWER_THAN_TWO_DATES = "Fewer than two distinct dates"
 NO_NON_NULL_VALUES = "No non-null values"
+NO_ROWS = "No rows"
 
 _AGGREGATE_QUERY = """
 SELECT
@@ -171,6 +172,7 @@ def collect_timestamp_analysis(
         data_type=column.data_type,
         total_rows=aggregates.total_rows,
         null_rows=aggregates.null_rows,
+        null_share=_null_share(aggregates.null_rows, aggregates.total_rows),
         min_value=aggregates.min_value,
         max_value=aggregates.max_value,
         future_values=aggregates.future_values,
@@ -367,6 +369,12 @@ def _rows_per_day(
         counts[day] = rows
 
     return Fact(fill_days(counts, first_day, last_day), source="derived")
+
+
+def _null_share(null_rows: Fact[int], total_rows: Fact[int]) -> Fact[float]:
+    if null_rows.available and total_rows.available and total_rows.value == 0:
+        return Fact.unavailable("derived", NO_ROWS)
+    return derive(lambda nulls, total: nulls / total, null_rows, total_rows)
 
 
 def _int(row: dict[str, Any], name: str, query: str) -> Fact[int]:
