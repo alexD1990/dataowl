@@ -78,3 +78,22 @@ class TimestampAnalysis:
     rows_per_day_mean: Fact[float]
     rows_per_day_max: Fact[int]
     notes: tuple[str, ...] = TIMESTAMP_NOTES
+
+
+@dataclass(frozen=True)
+class ComparisonAnalysis:
+    """Row counts comparing two user-selected time columns.
+
+    Rows where at least one of the columns is null are counted only in either_null. The
+    other three facts count rows where both columns are non-null, so the four facts together
+    cover every row.
+    """
+
+    first_column: str
+    second_column: str
+    first_data_type: str
+    second_data_type: str
+    second_after_first: Fact[int]
+    second_equal_first: Fact[int]
+    second_before_first: Fact[int]
+    either_null: Fact[int]
