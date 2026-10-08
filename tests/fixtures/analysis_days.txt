@@ -1,0 +1,17 @@
+main.sales.orders
+
+TIMESTAMP  created_at
+  Min:             2026-10-06 00:12
+  Max:             2026-10-07 23:40
+  Nulls:           0 (0.00 %)
+  Future values:   0
+  Distinct dates:  2
+  Days between distinct dates:
+    min 1 · median 1 · mean 1 · max 1
+  Rows per day, last 3 complete days (2026-10-05 – 2026-10-07):
+    median 980 · mean 4 328 · min 0 · max 12 004
+    2026-10-05       0
+    2026-10-06  12 004
+    2026-10-07     980
+  Note: gaps are measured in whole days; cadence below one day is not visible.
+  Note: counts reflect current values of the column, not historical changes.

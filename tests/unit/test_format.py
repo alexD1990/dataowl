@@ -1,11 +1,19 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 
 import pytest
 
 from dataowl.model.facts import Fact
-from dataowl.render.format import format_bytes, format_datetime, format_fact, format_int
+from dataowl.render.format import (
+    format_bytes,
+    format_date,
+    format_datetime,
+    format_decimal,
+    format_fact,
+    format_int,
+    format_percent,
+)
 
 
 @pytest.mark.parametrize(
@@ -60,3 +68,41 @@ def test_format_fact_with_and_without_fmt() -> None:
     assert format_fact(Fact(1284991, source="exact"), format_int) == "1 284 991"
     assert format_fact(Fact("DELTA", source="metadata")) == "DELTA"
     assert format_fact(Fact(0, source="exact")) == "0"
+
+
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [
+        (0, "0"),
+        (0.0, "0"),
+        (18.0, "18"),
+        (18, "18"),
+        (7.06, "7.1"),
+        (7.96, "8"),
+        (0.04, "0"),
+        (4283.33, "4 283.3"),
+        (4328.0, "4 328"),
+        (1284991.0, "1 284 991"),
+        (1234567.89, "1 234 567.9"),
+    ],
+)
+def test_format_decimal(value: float, expected: str) -> None:
+    assert format_decimal(value) == expected
+
+
+@pytest.mark.parametrize(
+    ("share", "expected"),
+    [
+        (0.0, "0.00 %"),
+        (0.01234, "1.23 %"),
+        (0.000999, "0.10 %"),
+        (0.5, "50.00 %"),
+        (1.0, "100.00 %"),
+    ],
+)
+def test_format_percent(share: float, expected: str) -> None:
+    assert format_percent(share) == expected
+
+
+def test_format_date() -> None:
+    assert format_date(date(2026, 1, 4)) == "2026-01-04"

@@ -125,3 +125,8 @@ class ColumnAnalysis:
     def to_dict(self) -> dict[str, Any]:
         result: dict[str, Any] = to_jsonable(self)
         return result
+
+    def show(self, *, show_days: bool = False) -> None:
+        from dataowl.render.terminal import render_column_analysis
+
+        print(render_column_analysis(self, show_days=show_days))

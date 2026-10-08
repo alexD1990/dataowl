@@ -1,0 +1,7 @@
+main.sales.orders
+
+COMPARE  created_at → Updated_At
+  Updated_At > created_at:  700
+  Updated_At = created_at:  300
+  Updated_At < created_at:  0
+  Either is null:           12

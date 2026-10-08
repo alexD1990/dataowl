@@ -1,0 +1,60 @@
+main.sales.orders
+
+PRIMARY KEY  customer_id, order_id  (declared, not enforced)
+
+KEY  customer_id
+  Rows:                    1 284 991
+  Rows with null in key:   0
+  Distinct keys:           52 004
+  Keys occurring >1 time:  51 870
+  Rows in those keys:      1 284 857
+  Rows per key:            median 18 · max 4 210
+    1 row:                 134
+    2–10 rows:             9 902
+    11–100 rows:           41 731
+    >100 rows:             237
+
+KEY  customer_id + order_id
+  Rows:                    1 284 991
+  Rows with null in key:   0
+  Distinct keys:           1 284 991
+  Keys occurring >1 time:  0
+  Rows in those keys:      0
+  Rows per key:            median 1 · max 1
+    1 row:                 1 284 991
+    2–10 rows:             0
+    11–100 rows:           0
+    >100 rows:             0
+
+TIMESTAMP  created_at
+  Min:             2021-01-04 06:30
+  Max:             2026-10-07 23:58
+  Nulls:           1 284 (0.10 %)
+  Future values:   0
+  Distinct dates:  2 103
+  Days between distinct dates:
+    min 1 · median 1 · mean 1 · max 3
+  Rows per day, last 30 complete days (2026-09-08 – 2026-10-07):
+    median 42 800 · mean 42 833.3 · min 38 912 · max 45 001
+  Note: gaps are measured in whole days; cadence below one day is not visible.
+  Note: counts reflect current values of the column, not historical changes.
+
+TIMESTAMP  ingested_date
+  Min:             2021-01-04
+  Max:             2026-09-28
+  Nulls:           0 (0.00 %)
+  Future values:   0
+  Distinct dates:  300
+  Days between distinct dates:
+    min 1 · median 7 · mean 7.1 · max 21
+  Rows per day, last 30 complete days (2026-09-08 – 2026-10-07):
+    median 0 · mean 4 283.3 · min 0 · max 42 800
+  Note: gaps are measured in whole days; cadence below one day is not visible.
+  Note: counts reflect current values of the column, not historical changes.
+
+COMPARE  created_at → ingested_date
+  ingested_date > created_at:  12 004
+  ingested_date = created_at:  1 272 987
+  ingested_date < created_at:  0
+  Either is null:              0
+  Note: date values are compared as 00:00:00.

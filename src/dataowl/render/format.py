@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from datetime import datetime
+from datetime import date, datetime
 from typing import TypeVar
 
 from dataowl.model.facts import Fact
@@ -28,6 +28,25 @@ def format_bytes(n: float) -> str:
 def format_int(n: int) -> str:
     """Integer with a space as thousands separator."""
     return f"{n:,}".replace(",", " ")
+
+
+def format_decimal(value: float) -> str:
+    """Rounded to one decimal, shown as an integer when the rounded value is whole.
+
+    Uses a space as thousands separator: 18.0 -> '18', 7.06 -> '7.1', 4283.33 -> '4 283.3'.
+    """
+    text = f"{value:,.1f}".replace(",", " ")
+    return text[:-2] if text.endswith(".0") else text
+
+
+def format_percent(share: float) -> str:
+    """A share from 0 to 1 as a percentage with two decimals: 0.01234 -> '1.23 %'."""
+    return f"{share * 100:.2f} %"
+
+
+def format_date(value: date) -> str:
+    """YYYY-MM-DD."""
+    return value.strftime("%Y-%m-%d")
 
 
 def format_datetime(value: datetime) -> str:

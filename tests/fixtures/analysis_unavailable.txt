@@ -1,0 +1,35 @@
+`my-catalog`.raw.events
+
+PRIMARY KEY  n/a ([INSUFFICIENT_PERMISSIONS] User does not have USE CATALOG on Catalog 'my-catalog'.)
+
+KEY  event_id
+  n/a (Key query returned no rows)
+
+TIMESTAMP  event_time
+  Min:             2026-08-29 00:00
+  Max:             n/a (Unexpected max_value type in timestamp aggregate query result: str)
+  Nulls:           0 (0.00 %)
+  Future values:   2
+  Distinct dates:  40
+  Days between distinct dates:
+    min 1 · median n/a (Unexpected median_gap_days type in gap query result: Decimal) · mean 1.3 · max 4
+  Rows per day, last 30 complete days:
+    n/a (Unexpected today type in timestamp aggregate query result: datetime)
+  Note: gaps are measured in whole days; cadence below one day is not visible.
+  Note: counts reflect current values of the column, not historical changes.
+
+TIMESTAMP  loaded_on
+  Min:             n/a (No non-null values)
+  Max:             n/a (No non-null values)
+  Nulls:           10 (100.00 %)
+  Future values:   0
+  Distinct dates:  0
+  Days between distinct dates:
+    n/a (Fewer than two distinct dates)
+  Rows per day, last 30 complete days (2026-09-08 – 2026-10-07):
+    n/a (timeout)
+  Note: gaps are measured in whole days; cadence below one day is not visible.
+  Note: counts reflect current values of the column, not historical changes.
+
+COMPARE  event_time → loaded_on
+  n/a (Comparison query returned no rows)
