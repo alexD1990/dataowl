@@ -36,8 +36,9 @@ def inspect(
     """Collect overview facts for a table.
 
     Raises ValueError for an invalid table name, RuntimeError when no SparkSession is
-    available, and TableNotFoundError when the table does not exist or is not accessible.
-    Every other failure makes the affected facts unavailable.
+    available, and TableNotFoundError when the table does not exist or is not accessible,
+    including when the catalog does not exist. Every other failure makes the affected facts
+    unavailable.
     """
     ref = parse_table(table)
     runner = get_runner(spark)
@@ -98,8 +99,8 @@ def analyze(
     None, for invalid days, and for an unknown or unsupported column. All input is validated
     before any query against the table's data. Raises RuntimeError when no SparkSession is
     available and when the schema is not available from information_schema.columns. Raises
-    TableNotFoundError when the table does not exist or is not accessible. Every other
-    failure makes the affected facts unavailable.
+    TableNotFoundError when the table does not exist or is not accessible, including when
+    the catalog does not exist. Every other failure makes the affected facts unavailable.
     """
     ref = parse_table(table)
     if key is None and timestamp is None and compare is None:

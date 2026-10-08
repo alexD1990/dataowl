@@ -246,6 +246,20 @@ def test_table_not_found_propagates(fake: FakeRunner) -> None:
     assert_read_only(fake)
 
 
+def test_missing_catalog_raises_table_not_found(fake: FakeRunner) -> None:
+    fake.on_error(
+        TABLES_SQL,
+        RuntimeError("[NO_SUCH_CATALOG_EXCEPTION] Catalog 'dev' not found.\nSQLSTATE: 42704"),
+    )
+    _register_all(fake)
+
+    with pytest.raises(TableNotFoundError, match="Catalog 'dev' not found"):
+        inspect("dev.sales.orders")
+
+    assert len(fake.queries) == 1
+    assert_read_only(fake)
+
+
 def test_invalid_table_name_raises_before_spark(monkeypatch: pytest.MonkeyPatch) -> None:
     def get_runner(spark: object) -> None:
         raise AssertionError("get_runner must not be called")

@@ -217,6 +217,15 @@ def test_table_not_found(recorder: RecordingRunner) -> None:
         inspect(table("does_not_exist"))
 
 
+def test_catalog_not_found(recorder: RecordingRunner) -> None:
+    missing = "dataowl_no_such_catalog_it.s.t"
+
+    with pytest.raises(TableNotFoundError):
+        inspect(missing)
+    with pytest.raises(TableNotFoundError):
+        analyze(missing, key="id")
+
+
 # analyze() and the inspect history excerpt. Expected values are the comments at each table
 # in setup_test_tables.sql.
 

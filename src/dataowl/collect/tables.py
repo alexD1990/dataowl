@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from dataowl.collect import safe_query, short_reason
+from dataowl.collect import is_catalog_not_found, safe_query, short_reason
 from dataowl.errors import TableNotFoundError
 from dataowl.identifiers import TableRef
 from dataowl.model.facts import Fact
@@ -28,8 +28,9 @@ WHERE table_schema = :schema
 def collect_table_info(runner: SqlRunner, ref: TableRef) -> TableInfo:
     """Read catalog metadata for the table.
 
-    Raises TableNotFoundError if the query succeeds but returns no rows. Any other
-    failure makes every fact unavailable.
+    Raises TableNotFoundError if the query succeeds but returns no rows, or if it fails
+    because the catalog does not exist (see is_catalog_not_found). Any other failure makes
+    every fact unavailable.
     """
     result = safe_query(
         runner,
@@ -41,6 +42,10 @@ def collect_table_info(runner: SqlRunner, ref: TableRef) -> TableInfo:
 
     if isinstance(result, Exception):
         reason = short_reason(result)
+        if is_catalog_not_found(result):
+            raise TableNotFoundError(
+                f"Table {ref.quoted()} not found or no access: {reason}"
+            ) from result
         return TableInfo(
             object_type=Fact.unavailable("metadata", reason),
             table_type_raw=Fact.unavailable("metadata", reason),

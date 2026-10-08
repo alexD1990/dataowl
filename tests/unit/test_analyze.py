@@ -281,6 +281,20 @@ def test_table_not_found(fake: FakeRunner) -> None:
     assert _kinds(fake) == ["tables"]
 
 
+def test_missing_catalog_raises_table_not_found(fake: FakeRunner) -> None:
+    fake.on_error(
+        PATTERNS["tables"],
+        RuntimeError("[CATALOG_NOT_FOUND] The catalog `dev` cannot be found.\nSQLSTATE: 42704"),
+    )
+    _register_all(fake)
+
+    with pytest.raises(TableNotFoundError, match="The catalog `dev` cannot be found"):
+        analyze("dev.sales.orders", key="customer_id")
+
+    assert _kinds(fake) == ["tables"]
+    assert fake.schema_calls == []
+
+
 def test_columns_error_raises_runtime_error(fake: FakeRunner) -> None:
     fake.on_error(PATTERNS["columns"], RuntimeError("PERMISSION_DENIED: no access\ntrace"))
     _register_all(fake)

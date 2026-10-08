@@ -112,6 +112,41 @@ def test_query_error_makes_all_facts_unavailable(fake_runner: FakeRunner) -> Non
     assert info.last_altered == expected
 
 
+CATALOG_NOT_FOUND = (
+    "[TABLE_OR_VIEW_NOT_FOUND] The table or view `dev`.`information_schema`.`tables` cannot be "
+    "found. Verify the spelling and correctness of the schema and catalog.\nSQLSTATE: 42P01"
+)
+
+
+def test_missing_catalog_raises(fake_runner: FakeRunner) -> None:
+    error = RuntimeError(CATALOG_NOT_FOUND)
+    fake_runner.on_error(r"information_schema\.tables", error)
+
+    with pytest.raises(TableNotFoundError) as excinfo:
+        collect_table_info(fake_runner, REF)
+
+    reason = CATALOG_NOT_FOUND.splitlines()[0]
+    assert str(excinfo.value) == f"Table `Main`.`Sales`.`Orders` not found or no access: {reason}"
+    assert excinfo.value.__cause__ is error
+
+
+@pytest.mark.parametrize(
+    "message",
+    [
+        "[PERMISSION_DENIED] User does not have USE CATALOG on Catalog 'main'.",
+        "[TABLE_OR_VIEW_NOT_FOUND] The table or view `main`.`sales`.`orders` cannot be found.",
+        "Connection reset",
+    ],
+)
+def test_other_query_errors_stay_unavailable(fake_runner: FakeRunner, message: str) -> None:
+    fake_runner.on_error(r"information_schema\.tables", RuntimeError(message))
+
+    info = collect_table_info(fake_runner, REF)
+
+    assert info.object_type == Fact.unavailable("metadata", message)
+    assert info.last_altered == Fact.unavailable("metadata", message)
+
+
 def test_schema_and_table_are_params_not_sql(fake_runner: FakeRunner) -> None:
     fake_runner.on(r"information_schema\.tables", [_row()])
 
