@@ -9,7 +9,13 @@ from dataowl.collect.compare import collect_comparison, normalize_compare
 from dataowl.collect.constraints import collect_primary_key
 from dataowl.collect.counts import collect_row_count
 from dataowl.collect.detail import collect_detail
-from dataowl.collect.history import collect_history_excerpt
+from dataowl.collect.history import (
+    build_history_analysis,
+    collect_commits,
+    collect_history_excerpt,
+    collect_session_time_zone,
+    validate_limit,
+)
 from dataowl.collect.keys import KeyInput, collect_key_analyses, normalize_keys
 from dataowl.collect.properties import collect_properties
 from dataowl.collect.tables import collect_table_info
@@ -21,13 +27,22 @@ from dataowl.collect.timestamps import (
 from dataowl.errors import TableNotFoundError
 from dataowl.identifiers import parse_table
 from dataowl.model.analysis import ColumnAnalysis
+from dataowl.model.history import HistoryAnalysis
 from dataowl.model.overview import Overview
 from dataowl.runner import get_runner
 
 if TYPE_CHECKING:
     from pyspark.sql import SparkSession
 
-__all__ = ["ColumnAnalysis", "Overview", "TableNotFoundError", "analyze", "inspect"]
+__all__ = [
+    "ColumnAnalysis",
+    "HistoryAnalysis",
+    "Overview",
+    "TableNotFoundError",
+    "analyze",
+    "history",
+    "inspect",
+]
 
 
 def inspect(
@@ -126,3 +141,27 @@ def analyze(
         timestamps=collect_timestamp_analyses(runner, ref, time_columns, days),
         comparison=collect_comparison(runner, ref, *pair) if pair is not None else None,
     )
+
+
+def history(
+    table: str, *, spark: SparkSession | None = None, limit: int | None = None
+) -> HistoryAnalysis:
+    """Collect facts about how the table is written, from DESCRIBE HISTORY.
+
+    With limit, only the newest `limit` commits are read. Timestamps are used in the session
+    time zone, which is collected as a fact.
+
+    Raises ValueError for an invalid table name and when limit is not None or an int of at
+    least 1, RuntimeError when no SparkSession is available, and TableNotFoundError when the
+    table does not exist or is not accessible, including when the catalog does not exist.
+    Every other failure makes the affected facts unavailable; for a view, the history facts
+    are unavailable.
+    """
+    ref = parse_table(table)
+    validate_limit(limit)
+    runner = get_runner(spark)
+
+    info = collect_table_info(runner, ref)
+    time_zone = collect_session_time_zone(runner)
+    result = collect_commits(runner, ref, info.object_type, limit)
+    return build_history_analysis(ref, limit, time_zone, result.commits, result.metrics_reason)

@@ -367,8 +367,10 @@ def test_show_prints_rendered_overview(
 def test_public_api() -> None:
     assert set(dataowl.__all__) == {
         "ColumnAnalysis",
+        "HistoryAnalysis",
         "Overview",
         "TableNotFoundError",
         "analyze",
+        "history",
         "inspect",
     }
