@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import date, datetime
 
 from dataowl.model.facts import Fact
 
@@ -28,3 +29,52 @@ class KeyAnalysis:
     keys_with_2_10_rows: Fact[int]
     keys_with_11_100_rows: Fact[int]
     keys_with_over_100_rows: Fact[int]
+
+
+GAP_NOTE = "gaps are measured in whole days; cadence below one day is not visible"
+COUNT_NOTE = "counts reflect current values of the column, not historical changes"
+TIMESTAMP_NOTES = (GAP_NOTE, COUNT_NOTE)
+
+
+@dataclass(frozen=True)
+class DayCount:
+    """Number of rows on one day."""
+
+    day: date
+    rows: int
+
+
+@dataclass(frozen=True)
+class TimestampAnalysis:
+    """Time span and cadence of one timestamp, timestamp_ntz or date column.
+
+    min_value and max_value are datetime for timestamp and timestamp_ntz, and date for date.
+    Gaps are measured in whole days between consecutive distinct dates.
+
+    The window is the last `days` whole days, not including the current day, in the session
+    time zone: from window_first_day (today - days) to window_last_day (today - 1).
+    rows_per_day holds one DayCount per day in the window, in ascending order, with 0 for
+    days without rows. The per-day statistics are computed from rows_per_day.
+    """
+
+    column: str
+    data_type: str
+    total_rows: Fact[int]
+    null_rows: Fact[int]
+    min_value: Fact[datetime | date]
+    max_value: Fact[datetime | date]
+    future_values: Fact[int]
+    distinct_dates: Fact[int]
+    min_gap_days: Fact[int]
+    median_gap_days: Fact[float]
+    mean_gap_days: Fact[float]
+    max_gap_days: Fact[int]
+    days: int
+    window_first_day: Fact[date]
+    window_last_day: Fact[date]
+    rows_per_day: Fact[tuple[DayCount, ...]]
+    rows_per_day_min: Fact[int]
+    rows_per_day_median: Fact[float]
+    rows_per_day_mean: Fact[float]
+    rows_per_day_max: Fact[int]
+    notes: tuple[str, ...] = TIMESTAMP_NOTES
