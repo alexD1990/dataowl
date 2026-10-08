@@ -4,7 +4,7 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
-## [0.1.0] - 2026-10-01
+## [0.1.0] - 2026-10-08
 
 First release: overview facts for a table (`inspect`).
 
