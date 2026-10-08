@@ -391,6 +391,26 @@ FROM (
 -- Expected inspect history excerpt (operation categories as dataowl counts them):
 --   CREATE TABLE 1, WRITE 2, WRITE (overwrite) 1, MERGE 1, UPDATE 1, DELETE 1
 --   history_num_commits >= 7 (OPTIMIZE commits from predictive optimization may be added)
+--
+-- Expected history() (step 21), same commits:
+--   operations: CREATE TABLE 1, WRITE 2, WRITE (overwrite) 1, MERGE 1, UPDATE 1, DELETE 1;
+--   other operations, such as OPTIMIZE, may be added.
+--   row_stats (operation, rows, commits with metric / commits, sum, median, max):
+--     WRITE              inserted  2/2  150  75   100   numOutputRows 100 and 50
+--     WRITE (overwrite)  inserted  1/1  200  200  200   numOutputRows 200
+--     MERGE              inserted  1/1   50   50   50   numTargetRowsInserted (ids 200..249)
+--     MERGE              updated   1/1   50   50   50   numTargetRowsUpdated (ids 150..199)
+--     MERGE              deleted   1/1    0    0    0   numTargetRowsDeleted (no DELETE clause)
+--     UPDATE             updated   1/1   30   30   30   numUpdatedRows (ids 0..29)
+--     DELETE             deleted   1/1   10   10   10   numDeletedRows (ids 240..249)
+--   CREATE TABLE and OPTIMIZE give no row_stats.
+--   commits_per_hour sums to num_commits; num_days >= 1 (the commits are usually on one day).
+--   time_zone: the session time zone, a non-empty string from current_timezone().
+--
+-- Expected history(limit=3): DESCRIBE HISTORY ... LIMIT 3 gives the three newest commits,
+--   version 6 DELETE, version 5 UPDATE and version 4 MERGE, so num_commits = 3 and
+--   operations = {DELETE: 1, MERGE: 1, UPDATE: 1}. An OPTIMIZE commit made after the
+--   script ran replaces the oldest of these.
 
 DROP TABLE IF EXISTS IDENTIFIER(it_prefix || '.merge_history');
 

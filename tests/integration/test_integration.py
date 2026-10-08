@@ -69,10 +69,18 @@ from typing import TYPE_CHECKING, Any  # noqa: E402
 from conftest import assert_read_only  # noqa: E402
 
 import dataowl  # noqa: E402
-from dataowl import ColumnAnalysis, TableNotFoundError, analyze, inspect  # noqa: E402
+from dataowl import (  # noqa: E402
+    ColumnAnalysis,
+    HistoryAnalysis,
+    TableNotFoundError,
+    analyze,
+    history,
+    inspect,
+)
 from dataowl.identifiers import TableRef  # noqa: E402
 from dataowl.model.analysis import DayCount, KeyAnalysis  # noqa: E402
 from dataowl.model.facts import Fact  # noqa: E402
+from dataowl.model.history import RowStats  # noqa: E402
 from dataowl.model.overview import ObjectType  # noqa: E402
 from dataowl.runner import SqlRunner, get_runner  # noqa: E402
 
@@ -114,7 +122,7 @@ class RecordingRunner:
 
 @pytest.fixture
 def recorder(monkeypatch: pytest.MonkeyPatch) -> Iterator[RecordingRunner]:
-    """Route inspect() and analyze() through a RecordingRunner, and check principle 2."""
+    """Route inspect(), analyze() and history() through a RecordingRunner (principle 2)."""
     runner = RecordingRunner(get_runner())
     monkeypatch.setattr(dataowl, "get_runner", lambda spark=None: runner)
     yield runner
@@ -224,6 +232,8 @@ def test_catalog_not_found(recorder: RecordingRunner) -> None:
         inspect(missing)
     with pytest.raises(TableNotFoundError):
         analyze(missing, key="id")
+    with pytest.raises(TableNotFoundError):
+        history(missing)
 
 
 # analyze() and the inspect history excerpt. Expected values are the comments at each table
@@ -482,3 +492,116 @@ def test_analyze_to_dict_and_show(
     analysis.show()
     analysis.show(show_days=True)
     assert analysis.table.table in capsys.readouterr().out
+
+
+# history(). Expected values are the comments at merge_history in setup_test_tables.sql.
+
+# (operation, rows) -> (commits with metric, commits, sum, median, max)
+EXPECTED_ROW_STATS = {
+    ("WRITE", "inserted"): (2, 2, 150, 75.0, 100),
+    ("WRITE (overwrite)", "inserted"): (1, 1, 200, 200.0, 200),
+    ("MERGE", "inserted"): (1, 1, 50, 50.0, 50),
+    ("MERGE", "updated"): (1, 1, 50, 50.0, 50),
+    ("MERGE", "deleted"): (1, 1, 0, 0.0, 0),
+    ("UPDATE", "updated"): (1, 1, 30, 30.0, 30),
+    ("DELETE", "deleted"): (1, 1, 10, 10.0, 10),
+}
+
+
+def row_stats_by_key(analysis: HistoryAnalysis) -> dict[tuple[str, str], RowStats]:
+    assert analysis.row_stats.available, analysis.row_stats.reason
+    assert analysis.row_stats.value is not None
+    return {(stats.operation, stats.kind): stats for stats in analysis.row_stats.value}
+
+
+def test_history_merge_history(recorder: RecordingRunner) -> None:
+    analysis = history(table("merge_history"))
+
+    # Assumption verified here: current_timezone() returns the session time zone as a
+    # non-empty string.
+    time_zone = analysis.time_zone
+    assert time_zone.available, time_zone.reason
+    assert isinstance(time_zone.value, str) and time_zone.value
+
+    operations = analysis.operations
+    assert operations.available, operations.reason
+    assert operations.value is not None
+    known = {
+        "CREATE TABLE": 1,
+        "WRITE": 2,
+        "WRITE (overwrite)": 1,
+        "MERGE": 1,
+        "UPDATE": 1,
+        "DELETE": 1,
+    }
+    for operation, count in known.items():
+        assert operations.value.get(operation) == count, (operation, operations.value)
+    # Other operations, such as OPTIMIZE from predictive optimization, are allowed.
+
+    # Assumptions verified here: UPDATE reports numUpdatedRows and DELETE numDeletedRows,
+    # also when the table uses deletion vectors (the default for new tables in recent
+    # Databricks Runtime and serverless). MERGE reports numTargetRowsDeleted as 0 when
+    # nothing is deleted, rather than leaving the key out.
+    stats = row_stats_by_key(analysis)
+    for key, (with_metric, commits, total, median, maximum) in EXPECTED_ROW_STATS.items():
+        assert key in stats, (key, sorted(stats))
+        assert stats[key] == RowStats(*key, commits, with_metric, total, median, maximum), key
+    assert not any(operation in {"CREATE TABLE", "OPTIMIZE"} for operation, _ in stats)
+
+    num_commits = analysis.num_commits
+    assert num_commits.available and num_commits.value is not None
+    assert num_commits.value == sum(operations.value.values())
+    assert analysis.num_days.available, analysis.num_days.reason
+    assert analysis.num_days.value is not None and analysis.num_days.value >= 1
+    per_hour = analysis.commits_per_hour
+    assert per_hour.available, per_hour.reason
+    assert per_hour.value is not None and len(per_hour.value) == 24
+    assert sum(hour.commits for hour in per_hour.value) == num_commits.value
+    assert analysis.limit is None
+    assert all("LIMIT" not in sql.upper() for sql, _ in recorder.queries)
+
+
+def test_history_merge_history_limit(recorder: RecordingRunner) -> None:
+    analysis = history(table("merge_history"), limit=3)
+
+    history_queries = [sql for sql, _ in recorder.queries if sql.startswith("DESCRIBE HISTORY")]
+    assert len(history_queries) == 1
+    assert history_queries[0].endswith(" LIMIT 3"), history_queries[0]
+    assert analysis.limit == 3
+    assert analysis.num_commits == Fact(3, source="metadata")
+
+    operations = analysis.operations
+    assert operations.available and operations.value is not None
+    # OPTIMIZE commits made after the setup script can push MERGE, UPDATE or DELETE out of
+    # the three newest commits, so the operations are checked only without OPTIMIZE.
+    if "OPTIMIZE" not in operations.value:
+        assert operations.value == {"DELETE": 1, "MERGE": 1, "UPDATE": 1}
+
+
+def test_history_simple_view(recorder: RecordingRunner) -> None:
+    analysis = history(table("simple_view"))
+
+    assert analysis.time_zone.available, analysis.time_zone.reason
+    facts = {
+        name: value
+        for name, value in vars(analysis).items()
+        if isinstance(value, Fact) and name != "time_zone"
+    }
+    assert facts
+    for name, fact in facts.items():
+        assert fact == Fact.unavailable(fact.source, VIEWS), name
+    assert not any(sql.startswith("DESCRIBE HISTORY") for sql, _ in recorder.queries)
+
+
+@pytest.mark.parametrize("name", ["merge_history", "small_table"])
+def test_history_to_dict_and_show(
+    recorder: RecordingRunner, capsys: pytest.CaptureFixture[str], name: str
+) -> None:
+    analysis = history(table(name))
+
+    assert isinstance(analysis, HistoryAnalysis)
+    json.dumps(analysis.to_dict())
+    analysis.show()
+    out = capsys.readouterr().out
+    assert analysis.table.table in out
+    assert "HISTORY  (" in out

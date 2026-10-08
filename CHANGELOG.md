@@ -4,6 +4,32 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+## [0.3.0] - YYYY-MM-DD
+
+Write behaviour from the Delta history (`history`).
+
+### Added
+- `dataowl.history(table, *, spark=None, limit=None)` returning a `HistoryAnalysis` with
+  `to_dict()` and `show()`. `limit` reads only the newest `limit` commits.
+- Observation window (oldest and newest commit, calendar days, commits), commits per day
+  (median, min, max, with 0 for days without commits), commits per hour of day, and
+  commits per operation with `WRITE (overwrite)` as its own category.
+- Inserted, updated and deleted rows per operation from `operationMetrics`
+  (`numTargetRowsInserted`, `numTargetRowsUpdated` and `numTargetRowsDeleted` for `MERGE`,
+  `numOutputRows` for `WRITE`, `WRITE (overwrite)` and `... AS SELECT`, `numUpdatedRows`
+  for `UPDATE`, `numDeletedRows` for `DELETE`): commits with the metric out of all, sum,
+  median and max.
+- The session time zone (`current_timezone()`) as a fact. Days and hours are counted in
+  that time zone.
+- Notes in the output: the history is limited by `delta.logRetentionDuration`, rows
+  replaced by `WRITE (overwrite)` are not counted as deleted, and the oldest day in the
+  window may be incomplete.
+
+### Changed
+- `inspect` and `analyze` raise `TableNotFoundError` when the catalog does not exist.
+  Before, every fact in `inspect` was `n/a` and `analyze` raised `RuntimeError` about the
+  schema.
+
 ## [0.2.0] - 2026-10-08
 
 Column analysis (`analyze`) and an excerpt of the Delta history in `inspect`.

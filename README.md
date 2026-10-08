@@ -3,8 +3,10 @@
 dataowl reports facts about a table in Databricks (Unity Catalog / Delta Lake): size, files,
 rows, schema, table properties and an excerpt of the Delta history, and facts about the
 columns you choose: grain and uniqueness of keys, time span and cadence of time columns, and
-how two time columns compare. It is meant for data engineers who build a dbt staging model
-and want the facts without writing exploratory SQL. It reports what exists and never gives
+how two time columns compare. From the Delta history it also reports how the table is
+written: commits per day and per hour of day, operations, and rows inserted, updated and
+deleted per operation. It is meant for data engineers who build a dbt staging model and want
+the facts without writing exploratory SQL. It reports what exists and never gives
 recommendations.
 
 ## Requirements
@@ -19,13 +21,17 @@ recommendations.
 In a Databricks notebook:
 
 ```python
-%pip install dataowl==0.2.0
+%pip install dataowl==0.3.0
 ```
 
 ## Usage
 
 dataowl works in two steps: `inspect` gives an overview of the table, and `analyze` gives
-facts about columns you choose.
+facts about columns you choose. In addition, `history` gives detailed facts from the Delta
+history about how the table is written.
+
+`inspect`, `analyze` and `history` raise `TableNotFoundError` when the table does not exist
+or is not accessible, including when the catalog does not exist.
 
 ### inspect
 
@@ -128,7 +134,86 @@ analysis.to_dict()  # JSON-serializable, like Overview.to_dict()
   validated before any query against the table's data.
 - `RuntimeError` when no SparkSession is available, and when the schema cannot be read from
   `information_schema.columns`, since the columns cannot then be validated.
-- `TableNotFoundError` when the table does not exist or is not accessible.
+- `TableNotFoundError` when the table does not exist or is not accessible, including when
+  the catalog does not exist.
+
+Every other failure makes the affected facts `n/a (<reason>)`.
+
+### history
+
+```python
+dataowl.history("catalog.schema.table").show()
+dataowl.history("catalog.schema.table", limit=100).show()  # only the newest 100 commits
+```
+
+Full signature:
+
+```python
+history(
+    table: str,
+    *,
+    spark: SparkSession | None = None,
+    limit: int | None = None,
+) -> HistoryAnalysis
+```
+
+`history` reads `DESCRIBE HISTORY` and reports:
+
+- **The observation window:** the oldest and newest commit, the number of days and the
+  number of commits. The window is shown at the top, because every other number only
+  covers this period.
+- **Commits per day:** median, min and max over every calendar day in the window. Days
+  without commits count as 0.
+- **Commits per hour of day:** the number of commits in each hour, 0–23.
+- **Operations:** the number of commits per operation, with `WRITE (overwrite)` as its own
+  category, as in `inspect`.
+- **Rows per operation:** inserted, updated and deleted rows, from `operationMetrics`.
+
+`limit` reads only the newest `limit` commits (`DESCRIBE HISTORY ... LIMIT <limit>`). Without
+`limit`, every commit in the history is read.
+
+Commit timestamps are used as Databricks returns them, in the session time zone, without
+conversion. Days and hours of day are counted in that time zone, and its name is shown as
+**Time zone** (from `current_timezone()`). The number of days counts calendar days from the
+date of the oldest commit to the date of the newest, both included.
+
+Rows per operation are based on these `operationMetrics` keys:
+
+| Operation | inserted | updated | deleted |
+|---|---|---|---|
+| `MERGE` | `numTargetRowsInserted` | `numTargetRowsUpdated` | `numTargetRowsDeleted` |
+| `WRITE`, `WRITE (overwrite)`, operations ending with `AS SELECT` | `numOutputRows` | | |
+| `UPDATE` | | `numUpdatedRows` | |
+| `DELETE` | | | `numDeletedRows` |
+
+Other combinations of operation and row type are not shown. **commits** is shown as the
+number of commits that have the metric out of all commits of the operation, for example
+`27/29`. Sum, median and max cover only the commits that have the metric, and are shown as
+`–` when none has it. If a metric has an unexpected format, only the rows per operation are
+`n/a (<reason>)`.
+
+The output ends with three notes:
+
+- The history is limited by `delta.logRetentionDuration`; the counts cover the window shown.
+- Rows replaced by `WRITE (overwrite)` are not counted as deleted.
+- The oldest day in the window may be incomplete, because `limit` or the log retention can
+  cut the history in the middle of a day.
+
+```python
+analysis = dataowl.history("catalog.schema.table")
+analysis.to_dict()  # JSON-serializable, like Overview.to_dict()
+```
+
+For views, every fact except the time zone is `n/a (Not available for views)`, and
+`DESCRIBE HISTORY` is not run.
+
+`history` raises:
+
+- `ValueError` for an invalid table name, and when `limit` is not `None` or an integer of
+  at least 1.
+- `RuntimeError` when no SparkSession is available.
+- `TableNotFoundError` when the table does not exist or is not accessible, including when
+  the catalog does not exist.
 
 Every other failure makes the affected facts `n/a (<reason>)`.
 
@@ -232,6 +317,12 @@ COMPARE  tpep_pickup_datetime → tpep_dropoff_datetime
 The data in `samples.nyctaxi.trips` is from January and February 2016, so every day in the
 rows-per-day window has 0 rows.
 
+```python
+dataowl.history("samples.nyctaxi.trips").show()
+```
+
+<!-- TODO before release: real output of history("samples.nyctaxi.trips") -->
+
 ## Principles
 
 - **Read-only.** Only `SELECT`, `DESCRIBE` and `SHOW`. Nothing is written, optimized or
@@ -242,8 +333,8 @@ rows-per-day window has 0 rows.
 - **You choose the columns.** `analyze` only analyzes the columns you give.
 - **Unavailable facts are reported with a reason.** Missing permissions or an unsupported
   object type make the affected facts `n/a (<reason>)`; the rest of the report is still
-  produced. Only a table that does not exist or is not accessible raises
-  `TableNotFoundError`.
+  produced. Only a table that does not exist or is not accessible, including a table in a
+  catalog that does not exist, raises `TableNotFoundError`.
 
 ## Facts per object type
 
@@ -255,6 +346,7 @@ rows-per-day window has 0 rows.
 | Field count incl. nested | Spark schema | yes | yes | yes | yes | yes |
 | Change Data Feed, log and deleted file retention | `SHOW TBLPROPERTIES` | yes | attempted¹ | attempted¹ | no | attempted¹ |
 | History excerpt | `DESCRIBE HISTORY` | yes | attempted¹ | attempted¹ | no | attempted¹ |
+| `history()`: window, commits, operations, rows per operation | `DESCRIBE HISTORY` | yes | attempted¹ | attempted¹ | no | attempted¹ |
 | Rows | `COUNT(*)` | yes | MATERIALIZED_VIEW: with `count_views=True`; STREAMING_TABLE: yes | with `count_views=True` | with `count_views=True` | UNKNOWN: yes; n/a type: with `count_views=True` |
 
 ¹ The query runs. If Databricks does not support it for the object, the facts are shown as
@@ -303,6 +395,25 @@ original value is shown in the header. "n/a type" means the object type could no
   **Either is null**, so the four numbers add up to all rows.
 - Medians and means are rounded to one decimal and shown without decimals when the rounded
   value is whole.
+
+### history
+
+- **HISTORY (... days, ... commits)** is the oldest and newest commit, the number of
+  calendar days from the date of the oldest to the date of the newest commit, both
+  included, and the number of commits.
+- **Limit** is shown only when `limit` is given: only the newest `limit` commits are read.
+- **Time zone** is the session time zone, from `current_timezone()`. Commit timestamps,
+  days and hours of day are in this time zone.
+- **Commits per day** is the median, min and max over every day in the window, with 0 for
+  days without commits.
+- **Commits per hour of day** lists the hours of day that have commits, with the number of
+  commits.
+- **OPERATIONS** is the number of commits per operation, as in the HISTORY block of
+  `inspect`.
+- **ROWS** has one line per operation and row type (inserted, updated, deleted) with a
+  metric, see the table under **history** above. **commits** is the number of commits with
+  the metric out of all commits of the operation. **sum**, **median** and **max** cover the
+  commits with the metric, and are `–` when none has it.
 
 ## Known deviations
 
