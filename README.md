@@ -321,7 +321,28 @@ rows-per-day window has 0 rows.
 dataowl.history("samples.nyctaxi.trips").show()
 ```
 
-<!-- TODO before release: real output of history("samples.nyctaxi.trips") -->
+```text
+samples.nyctaxi.trips
+
+HISTORY  (2025-09-09 15:05 – 2026-09-14 15:07, 371 days, 223 commits)
+  Time zone:        Etc/UTC (session)
+  Commits per day:  median 1 · min 0 · max 2
+  Commits per hour of day:
+    06:00    1
+    15:00  222
+
+OPERATIONS
+  CREATE OR REPLACE TABLE AS SELECT:  212
+  SET TBLPROPERTIES:                  11
+
+ROWS
+  operation                          rows      commits  sum        median  max
+  CREATE OR REPLACE TABLE AS SELECT  inserted  212/212  4 649 584  21 932  21 932
+
+Note: history is limited by delta.logRetentionDuration; counts cover the window above.
+Note: rows replaced by WRITE (overwrite) are not counted as deleted.
+Note: the oldest day in the window may be incomplete.
+```
 
 ## Principles
 

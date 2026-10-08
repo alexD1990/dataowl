@@ -4,7 +4,7 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
-## [0.3.0] - YYYY-MM-DD
+## [0.3.0] - 2026-10-08
 
 Write behaviour from the Delta history (`history`).
 
